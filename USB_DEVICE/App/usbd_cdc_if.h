@@ -48,12 +48,15 @@
   * @brief Defines.
   * @{
   */
+/* Define size for the receive and transmit buffer over CDC */
+#define APP_RX_DATA_SIZE  256
+#define APP_TX_DATA_SIZE  256
 /* USER CODE BEGIN EXPORTED_DEFINES */
 /* Define size for the receive and transmit buffer over CDC */
 /* It's up to user to redefine and/or remove those define */
-#define APP_RX_DATA_SIZE  128
-#define APP_TX_DATA_SIZE  128
-
+#define CBUFFER_RX_DATA_SIZE (APP_RX_DATA_SIZE*8)
+#define CBUFFER_TX_DATA_SIZE (APP_TX_DATA_SIZE*8)
+#define CMD_SIZE			 64
 /* USER CODE END EXPORTED_DEFINES */
 
 /**
@@ -110,20 +113,7 @@ extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
-void _printf(const char *format, ...);
-void _scanf(const char *format, ...);
-void _cprintf(const char *format, ...);
-void _wprintf(const char *format, ...);
-void _eprintf(const char *format, ...);
-void CDC_Clear(void);
-void CDC_clearLine(void);
-void CDC_SetColor(uint8_t FG, uint8_t BG);
-void CDC_SetDefaultColor(void);
-void CDC_SetPos(uint16_t x, uint16_t y);
-void CDC_Move(int16_t x, int16_t y);
-void CDC_rxPrintf_ON(void);
-void CDC_rxPrintf_OFF(void);
-void CDC_getCmd(uint8_t *Task, char **cmdList, uint8_t nTask);
+
 uint8_t CDC_getCmdArg(const char *format, ...);
 /* USER CODE END EXPORTED_FUNCTIONS */
 

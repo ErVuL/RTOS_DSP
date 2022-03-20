@@ -48,7 +48,7 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 #define	MAJ_VERSION		2
-#define	MIN_VERSION		0
+#define	MIN_VERSION		1
 
 #define N_AUDIO_INPUT	2			// Number of audio input channel
 #define N_AUDIO_OUTPUT	2			// Number of audio output channel

@@ -1,7 +1,7 @@
 #include <signalProc_cortexM4.h>
 #include "stm32f407xx.h"
 #include "arm_math.h"
-
+#include <stdint.h>
 
 
 /* Exported functions */
@@ -64,6 +64,7 @@ void randGauss_q31(q31_t std_dev, q31_t mean, q31_t *outputBuffer, uint32_t n)
 		}
 	}
 }
+
 
 
 //===========================================================================

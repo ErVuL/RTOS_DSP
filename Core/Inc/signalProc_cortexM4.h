@@ -20,8 +20,4 @@ void norm(double std_dev, double mean, q31_t *outputBuffer, uint32_t n);
 double rand_val(int seed);
 
 
-
-
-
-
 #endif /* __SP_CORTEXM4__ */

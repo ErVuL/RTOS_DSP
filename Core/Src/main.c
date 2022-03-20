@@ -21,6 +21,8 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_device.h"
+#include "usb_device.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "usbd_cdc_if.h"
@@ -31,6 +33,7 @@
 #include <queue.h>
 #include <semphr.h>
 #include <TASK_AudioProc.h>
+#include "serialCom.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,24 +55,35 @@ I2S_HandleTypeDef hi2s2;
 DMA_HandleTypeDef hdma_i2s2_ext_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
 
-/* Definitions for SerialUI_task */
-osThreadId_t SerialUI_taskHandle;
-const osThreadAttr_t SerialUI_task_attributes = {
-  .name = "SerialUI_task",
-  .stack_size = 512 * 4,
+DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
+/* Definitions for UI_task */
+osThreadId_t UI_taskHandle;
+const osThreadAttr_t UI_task_attributes = {
+  .name = "UI_task",
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for AudioProc_task */
-osThreadId_t AudioProc_taskHandle;
-const osThreadAttr_t AudioProc_task_attributes = {
-  .name = "AudioProc_task",
-  .stack_size = 512 * 4,
+/* Definitions for audioProc_task */
+osThreadId_t audioProc_taskHandle;
+const osThreadAttr_t audioProc_task_attributes = {
+  .name = "audioProc_task",
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
+/* Definitions for CDC_TxMutex */
+osMutexId_t CDC_TxMutexHandle;
+const osMutexAttr_t CDC_TxMutex_attributes = {
+  .name = "CDC_TxMutex"
+};
+/* Definitions for CDC_RxMutex */
+osMutexId_t CDC_RxMutexHandle;
+const osMutexAttr_t CDC_RxMutex_attributes = {
+  .name = "CDC_RxMutex"
+};
 /* USER CODE BEGIN PV */
-extern const uint8_t (*exec_audioProcess_subTask[N_SUBTASK])();		// Subtask array of function pointer
-extern const char *audioProcess_subTaskCmdList[N_SUBTASK];				// Subtask command list
-uint8_t audioProcess_subTask = PROCESS;
+//extern const uint8_t (*exec_audioProcess_subTask[N_SUBTASK])();		// Subtask array of function pointer
+extern const char *audioProc_subTaskCmdList[N_SUBTASK];				// Subtask command list
+uint8_t audioProc_subTask = PROCESS;
 uint16_t I2S2_txBuf[I2S2_BUFLEN]; 					// I2S2 rxBuffer for PmodI2S2
 uint16_t I2S2_rxBuf[I2S2_BUFLEN]; 					// I2S2 txBuffer for PmodI2S2
 xSemaphoreHandle AUDIOPROCESS_SEM = 0;
@@ -80,8 +94,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2S2_Init(void);
-void TASK_SerialUI(void *argument);
-void TASK_AudioProc(void *argument);
+void TASK_serialUI(void *argument);
+void TASK_audioProc(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -89,7 +103,7 @@ void TASK_AudioProc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern const uint8_t (*exec_audioProc_subTask[N_SUBTASK])();
 /* USER CODE END 0 */
 
 /**
@@ -123,11 +137,16 @@ int main(void)
   MX_DMA_Init();
   MX_I2S2_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of CDC_TxMutex */
+  CDC_TxMutexHandle = osMutexNew(&CDC_TxMutex_attributes);
+
+  /* creation of CDC_RxMutex */
+  CDC_RxMutexHandle = osMutexNew(&CDC_RxMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -146,11 +165,11 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of SerialUI_task */
-  SerialUI_taskHandle = osThreadNew(TASK_SerialUI, NULL, &SerialUI_task_attributes);
+  /* creation of UI_task */
+  UI_taskHandle = osThreadNew(TASK_serialUI, NULL, &UI_task_attributes);
 
-  /* creation of AudioProc_task */
-  AudioProc_taskHandle = osThreadNew(TASK_AudioProc, NULL, &AudioProc_task_attributes);
+  /* creation of audioProc_task */
+  audioProc_taskHandle = osThreadNew(TASK_audioProc, NULL, &audioProc_task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -183,7 +202,6 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
   */
@@ -196,8 +214,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -214,13 +232,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-  PeriphClkInitStruct.PLLI2S.PLLI2SN = 192;
-  PeriphClkInitStruct.PLLI2S.PLLI2SR = 2;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
@@ -262,12 +273,34 @@ static void MX_I2S2_Init(void)
 
 /**
   * Enable DMA controller clock
+  * Configure DMA for memory to memory transfers
+  *   hdma_memtomem_dma2_stream0
   */
 static void MX_DMA_Init(void)
 {
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* Configure DMA request hdma_memtomem_dma2_stream0 on DMA2_Stream0 */
+  hdma_memtomem_dma2_stream0.Instance = DMA2_Stream0;
+  hdma_memtomem_dma2_stream0.Init.Channel = DMA_CHANNEL_0;
+  hdma_memtomem_dma2_stream0.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma2_stream0.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_LOW;
+  hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+  hdma_memtomem_dma2_stream0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+  hdma_memtomem_dma2_stream0.Init.MemBurst = DMA_MBURST_SINGLE;
+  hdma_memtomem_dma2_stream0.Init.PeriphBurst = DMA_PBURST_SINGLE;
+  if (HAL_DMA_Init(&hdma_memtomem_dma2_stream0) != HAL_OK)
+  {
+    Error_Handler( );
+  }
 
   /* DMA interrupt init */
   /* DMA1_Stream3_IRQn interrupt configuration */
@@ -311,26 +344,31 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_TASK_SerialUI */
+/* USER CODE BEGIN Header_TASK_serialUI */
 /**
-  * @brief  Function implementing the SerialUI_task thread.
+  * @brief  Function implementing the serialUI_task thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_TASK_SerialUI */
-void TASK_SerialUI(void *argument)
+/* USER CODE END Header_TASK_serialUI */
+void TASK_serialUI(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-  initTask();
+
 
   /* Infinite loop */
   for(;;)
   {
 		/* Check for serial command */
-		//CDC_getCmd(&audioProcess_subTask, (char **)audioProcess_subTaskCmdList, 5);
-		osDelay(10);
+	  	if(SER_getCmd(cmdList))
+	  	{
+
+	  	}
+	  	SER_flush();
+	  	//CDC_flush();
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
   }
 
   // Clean Task
@@ -339,37 +377,31 @@ void TASK_SerialUI(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_TASK_AudioProc */
+/* USER CODE BEGIN Header_TASK_audioProc */
 /**
-* @brief Function implementing the AudioProc_task thread.
+* @brief Function implementing the audioProc_task thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_TASK_AudioProc */
-void TASK_AudioProc(void *argument)
+/* USER CODE END Header_TASK_audioProc */
+void TASK_audioProc(void *argument)
 {
-  /* USER CODE BEGIN TASK_AudioProc */
-
-	if(HAL_I2SEx_TransmitReceive_DMA(&hi2s2, I2S2_txBuf, I2S2_rxBuf, I2S2_BUFLEN / 2) != HAL_OK)
-	{
-		_eprintf("/!\\ ERROR : Unable to launch I2S DMA transfer !\r\n");
-		Error_Handler();
-	}
-
-	/* Infinite loop */
+  /* USER CODE BEGIN TASK_audioProc */
+	osDelay(1500);
+	//initTask_audioProc();
+  /* Infinite loop */
 	for(;;)
 	{
-		//exec_audioProcess_subTask[audioProcess_subTask]();
-		osDelay(100);
+
+		_cprintf("SubTask = %d\r\n", 4);
+		//exec_audioProc_subTask[audioProc_subTask]();
+	    osDelay(1000);
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 	}
-
-	// Clean Task
-	osThreadTerminate(NULL);
-
-  /* USER CODE END TASK_AudioProc */
+  /* USER CODE END TASK_audioProc */
 }
 
- /**
+/**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
@@ -399,7 +431,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-  _eprintf("/!\\ FATAL ERROR !\r\n");
+  _cprintf("/!\\ FATAL ERROR !\r\n");
   __disable_irq();
   while (1)
   {

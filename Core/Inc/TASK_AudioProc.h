@@ -17,7 +17,7 @@
 enum MainTask {WAIT, PROCESS, GENERATE, INFO, HELP};
 
 /* Exported functions */
-void initTask(void);
+void initTask_audioProc(void);
 uint8_t wait(void);
 uint8_t process(void);
 uint8_t generate(void);

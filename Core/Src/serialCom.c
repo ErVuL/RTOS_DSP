@@ -125,7 +125,7 @@ static _Bool SER_flush(void)
 	return false;
 }
 
-static uint32_t SER_getCmd(char** cmdList, uint32_t len)
+static uint32_t SER_getCmd(char** cmdList, uint32_t len, test)
 {
 	uint8_t  UserRxBufferFS[MAX_CMD_LEN];
 	uint8_t  cmd[MAX_CMD_LEN];

@@ -7,7 +7,7 @@
 #include <TASK_AudioProc.h>
 
 
-const uint8_t (*exec_audioProcess_subTask[N_SUBTASK])() =
+const uint8_t (*exec_audioProc_subTask[N_SUBTASK])() =
 										{
 										&wait,    // Task automatically activated when serial port com is open
 										&process, // Default Task when no serial port com
@@ -16,7 +16,7 @@ const uint8_t (*exec_audioProcess_subTask[N_SUBTASK])() =
 										&info
 										};
 
-const char *audioProcess_subTaskCmdList[N_SUBTASK] =
+const char* audioProc_subTaskCmdList[N_SUBTASK] =
 										{
 										"q",
 										"process",
@@ -79,7 +79,7 @@ q31_t buffer1[BUFLEN];	// Left  channel
 q31_t buffer2[BUFLEN];  // Right channel
 
 /* Function definition */
-void initTask(void)
+void initTask_audioProc(void)
 {
 	/* FIR initialization */
 	arm_fir_init_q31(&FIR1_q31, FIRQ31_NTAP, pCoeffs1, pState1, BUFLEN);
@@ -91,7 +91,7 @@ uint8_t wait(void)
 	char cmd;
 	CDC_getCmdArg("%c", &cmd);
 	if(oldTask != WAIT)
-	{	CDC_rxPrintf_ON();
+	{
 		if(cmd == 'q')
 		{
 			_cprintf("Process stopped by user.\r\n");
@@ -132,7 +132,6 @@ uint8_t process(void)
 			FIR_PROCESS = 1;
 		}
 		_cprintf("Processing, type \"q\" to stop.\r\n");
-		CDC_rxPrintf_OFF();
 	}
 
 	/* Read audio data */
@@ -188,7 +187,6 @@ uint8_t generate(void)
 		    _cprintf("- mean    = %d\r\n", mean);
 			_cprintf("Generating signal, type \"q\" to stop.\r\n");
 		}
-		CDC_rxPrintf_OFF();
 	}
 
 	/* Compute random gaussian signal */
@@ -207,7 +205,6 @@ uint8_t generate(void)
 
 uint8_t info(void)
 {
-	CDC_rxPrintf_OFF();
 	_printf("\r\n- DSP version ...............: %d.%02d\r\n", 	MAJ_VERSION, MIN_VERSION);
 	_printf("- Build date ................: %s @ %s UTC+1\r\n", __DATE__, __TIME__);
 	_printf("- Available task ............: %d\r\n", 			N_SUBTASK);
@@ -223,7 +220,6 @@ uint8_t info(void)
 
 uint8_t help(void)
 {
-	CDC_rxPrintf_OFF();
 	_printf("\r\n>> process [-opt]\r\n"
 	        "        Process audio data with FIR filter activated\r\n"
 	        "        by default.\r\n\n"

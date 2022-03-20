@@ -12,11 +12,9 @@
 #define MAX_CMD_LEN  128
 #define N_CMD		 8
 
+static _Bool HOST_PORT_COM_OPEN = false;
 static uint32_t leftOffset = 0;
 static int8_t availableCMD = 0;
-static uint32_t SER_receive(uint8_t* Buf, uint32_t *Len);
-static _Bool  SER_flush(void);
-static _Bool  SER_readCmd(void);
 
 // Circular buffer declaration and initialization
 uint8_t rxbuf[CBUFFER_RX_DATA_SIZE];
@@ -27,16 +25,20 @@ static CB_uint8_t rxCBuf = {
 		&rxbuf[0]
 };
 uint8_t txbuf[CBUFFER_RX_DATA_SIZE];
-static CB_uint8_t txCBuf = {
-		&txbuf[0],
-		&txbuf[CBUFFER_RX_DATA_SIZE-1],
-		&txbuf[0],
-		&txbuf[0]
-};
 
 
 
-static uint32_t SER_receive(uint8_t* Buf, uint32_t *Len)
+void SER_open(void)
+{
+	HOST_PORT_COM_OPEN = true;
+}
+
+void SER_close(void)
+{
+	HOST_PORT_COM_OPEN = false;
+}
+
+uint32_t SER_receive(uint8_t* Buf, uint32_t *Len)
 {
 
 		uint8_t result = USBD_OK;
@@ -57,7 +59,8 @@ static uint32_t SER_receive(uint8_t* Buf, uint32_t *Len)
 					if(leftOffset)
 					{
 						CB_rewindWritePtr_u8(&rxCBuf, 1);
-						CB_write_u8(&txCBuf, (uint8_t *) "\b \b", 3);
+						CDC_Transmit_NB((uint8_t*)"\b \b", 3);
+
 						leftOffset--;
 					}
 				}
@@ -65,7 +68,7 @@ static uint32_t SER_receive(uint8_t* Buf, uint32_t *Len)
 				else if (Buf[ii] == '\r' || Buf[ii] == '\0' || Buf[ii] == '\n')
 				{
 
-					CB_write_u8(&txCBuf, (uint8_t *) "\r\n", 2);
+					CDC_Transmit_FS((uint8_t*)"\r\n> ", 5);
 					if(leftOffset)
 					{
 						CB_write_u8(&rxCBuf, (uint8_t *) "\0", 1);
@@ -77,7 +80,7 @@ static uint32_t SER_receive(uint8_t* Buf, uint32_t *Len)
 				else
 				{
 					CB_write_u8(&rxCBuf, &Buf[ii], 1);
-					CB_write_u8(&txCBuf, &Buf[ii], 1);
+					CDC_Transmit_NB(&Buf[ii], 1);
 					leftOffset++;
 				}
 			}
@@ -89,105 +92,86 @@ static uint32_t SER_receive(uint8_t* Buf, uint32_t *Len)
 }
 
 
-static _Bool SER_flush(void)
-{
-	uint32_t len;
-	uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
-
-	if(HOST_PORT_COM_OPEN)
-	{
-		osMutexAcquire(TxCBMutexHandle, osWaitForever);
-		if((len = CB_read_u8(UserTxBufferFS, &txCBuf, APP_TX_DATA_SIZE-2)))
-		{
-			osMutexRelease(TxCBMutexHandle);
-			if(UserTxBufferFS[len-1] == '\n')
-			{
-				UserTxBufferFS[len++] = '>';
-				UserTxBufferFS[len++] = ' ';
-				leftOffset = 0;
-			}
-			if(CDC_Transmit_FS(UserTxBufferFS, len) == USBD_OK)
-			{	return true;
-			}
-			else
-			{
-				osMutexAcquire(TxCBMutexHandle, osWaitForever);
-				CB_rewindReadPtr_u8(&txCBuf, len);
-				osMutexRelease(TxCBMutexHandle);
-			}
-		}
-		else
-		{
-			osMutexRelease(TxCBMutexHandle);
-		}
-
-	}
-	return false;
-}
-
-static uint32_t SER_getCmd(char** cmdList, uint32_t len, test)
+uint32_t SER_getCmd(char** cmdList, uint32_t len, char* args)
 {
 	uint8_t  UserRxBufferFS[MAX_CMD_LEN];
 	uint8_t  cmd[MAX_CMD_LEN];
 	uint8_t  fmt[4] = "%s ";
-	uint32_t cmdFound = false;
+	uint32_t cmdFound = len;
 	fmt[2] = END_CMD_CHAR;
 
+	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
 	if (availableCMD)
 	{
 		/* Read and record command */
 		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, MAX_CMD_LEN);
-		sscanf((char*) UserRxBufferFS, fmt, cmd);
+		sscanf((char*) UserRxBufferFS, (char*)fmt, (char*)cmd);
+		args[0] = '\0';
+		CB_readUntil_u8((uint8_t*)args, &rxCBuf, '\0', MAX_CMD_LEN);
 
 		for(uint8_t ii = 0; ii < len; ii++)
 		{
-			if(!strcmp(cmd, cmdList[ii]))
+			if(!strcmp((char*)cmd, cmdList[ii]))
 			{
-				*execCmd[ii](UserRxBufferFS);
 				cmdFound = ii;
 				availableCMD--;
 				break;
 			}
 		}
 
-		if(!cmdFound)
+		if(cmdFound == len)
 		{
-			_cprintf("/!\\ Command not found !\r\n");
+			_printc("/!\\ Command \"%s\" not found !\r\n", cmd);
 			availableCMD--;
-			return len;
+			osMutexRelease(CDC_RxMutexHandle);
+			return cmdFound;
 		}
 	}
+	osMutexRelease(CDC_RxMutexHandle);
 	return cmdFound;
 }
 
+void SER_printLock(void)
+{
+	osMutexAcquire(CDC_TxMutexHandle, osWaitForever);
+}
+
+void SER_printUnlock(void)
+{
+	osMutexRelease(CDC_TxMutexHandle);
+}
+
+void SER_scanLock(void)
+{
+	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
+}
+
+void SER_scanUnlock(void)
+{
+	osMutexRelease(CDC_RxMutexHandle);
+}
 
 void _printf(const char *format, ...)
 {
 	va_list arg;
-	uint8_t UserTxBufferFS[APP_RX_DATA_SIZE];
+	uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 	if (HOST_PORT_COM_OPEN)
 	{
 		va_start(arg, format);
 		vsprintf((char*) UserTxBufferFS, format, arg);
 		va_end(arg);
+
 		osMutexAcquire(CDC_TxMutexHandle, osWaitForever);
-		CB_write_u8(&txCBuf, UserTxBufferFS, strlen((char*) UserTxBufferFS));
-		SER_flush();
+		CDC_Transmit_FS(UserTxBufferFS, strlen((char*) UserTxBufferFS));
 		osMutexRelease(CDC_TxMutexHandle);
 	}
 }
 
 void _prints(uint8_t* stream, uint32_t len)
 {
-	va_list arg;
-	uint8_t UserTxBufferFS[APP_RX_DATA_SIZE];
 	if (HOST_PORT_COM_OPEN)
 	{
-		va_start(arg, format);
-		vsprintf((char*) UserTxBufferFS, format, arg);
-		va_end(arg);
-		CB_write_u8(&txCBuf, UserTxBufferFS, strlen((char*) UserTxBufferFS));
-		SER_flush();
+		CDC_Transmit_FS(stream, len);
 	}
 }
 
@@ -200,13 +184,14 @@ void _printc(const char *format, ...)
 	if (HOST_PORT_COM_OPEN)
 	{
 		clktime = HAL_GetTick();
-		va_start(arg, format);
 		sprintf((char*) UserTxBufferFS, "\r[%02lu:%02lu:%02lu.%03lu] ", (clktime/3600000)%100, (clktime/60000)%60, (clktime/1000)%60, clktime%1000);
+		va_start(arg, format);
 		vsprintf((char*) &UserTxBufferFS[16], format, arg);
 		va_end(arg);
+		memcpy(&UserTxBufferFS[strlen((char*) UserTxBufferFS)-1], "\r\n> ", 5);
+
 		osMutexAcquire(CDC_TxMutexHandle, osWaitForever);
-		CB_write_u8(&txCBuf, UserTxBufferFS, strlen((char*) UserTxBufferFS));
-		SER_flush();
+		CDC_Transmit_FS(UserTxBufferFS, strlen((char*) UserTxBufferFS));
 		osMutexRelease(CDC_TxMutexHandle);
 
 	}
@@ -215,21 +200,28 @@ void _printc(const char *format, ...)
 void _scanf(const char *format, ...)
 {
 	uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
+	va_list arg;
 
 	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
-	while (!CDC_RX_DATA_PENDING && HOST_PORT_COM_OPEN)
+	while (!availableCMD && HOST_PORT_COM_OPEN)
 	{
 	}
-	if (CDC_RX_DATA_PENDING)
+	if(availableCMD)
 	{
-		CB_readUntil_u8((uint8_t*) UserRxBufferFS, &rxCBuf, '\0', APP_TX_DATA_SIZE);
-		va_list arg;
+		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, MAX_CMD_LEN);
 		va_start(arg, format);
 		vsscanf((char*) UserRxBufferFS, format, arg);
 		va_end(arg);
-		CDC_RX_DATA_PENDING--;
+		availableCMD--;
 	}
 	osMutexRelease(CDC_RxMutexHandle);
+}
+
+uint32_t _scans(uint8_t* stream)
+{
+	availableCMD = 0;
+	return CB_read_u8(stream, &rxCBuf, APP_RX_DATA_SIZE);
+
 }
 
 

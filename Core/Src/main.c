@@ -21,7 +21,6 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_device.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -79,6 +78,16 @@ const osMutexAttr_t CDC_TxMutex_attributes = {
 osMutexId_t CDC_RxMutexHandle;
 const osMutexAttr_t CDC_RxMutex_attributes = {
   .name = "CDC_RxMutex"
+};
+/* Definitions for CDC_RxMutexHandle */
+osSemaphoreId_t CDC_RxMutexHandleHandle;
+const osSemaphoreAttr_t CDC_RxMutexHandle_attributes = {
+  .name = "CDC_RxMutexHandle"
+};
+/* Definitions for CDC_TxMutexHandle */
+osSemaphoreId_t CDC_TxMutexHandleHandle;
+const osSemaphoreAttr_t CDC_TxMutexHandle_attributes = {
+  .name = "CDC_TxMutexHandle"
 };
 /* USER CODE BEGIN PV */
 //extern const uint8_t (*exec_audioProcess_subTask[N_SUBTASK])();		// Subtask array of function pointer
@@ -151,6 +160,13 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of CDC_RxMutexHandle */
+  CDC_RxMutexHandleHandle = osSemaphoreNew(1, 1, &CDC_RxMutexHandle_attributes);
+
+  /* creation of CDC_TxMutexHandle */
+  CDC_TxMutexHandleHandle = osSemaphoreNew(1, 1, &CDC_TxMutexHandle_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -357,21 +373,30 @@ void TASK_serialUI(void *argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
 
+  uint32_t cmd;
+  char args[64];
+  char* cmdList[4] = {"cmd1",
+		  	  	   	"cmd2",
+					"cmd3",
+					"cmd4"};
+
+  osDelay(1000);
+  _printf("\r\n                    ###################\r\n");
+  _printf("                    ## RTOS DSP V%d.%d ##\r\n", MAJ_VERSION, MIN_VERSION);
+  _printf("                    ###################\r\n\n> ");
 
   /* Infinite loop */
   for(;;)
   {
 		/* Check for serial command */
-	  	if(SER_getCmd(cmdList))
+	  	if((cmd = SER_getCmd(cmdList, 4, args)) != 4)
 	  	{
-
+	  		_printc("Cmd: %d, args: %s\r\n", cmd+1, args);
 	  	}
-	  	SER_flush();
-	  	//CDC_flush();
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
   }
 
   // Clean Task
+  _printc("/!\\ Killing TASK_serialUI !\r\n");
   osThreadTerminate(NULL);
 
   /* USER CODE END 5 */
@@ -392,12 +417,14 @@ void TASK_audioProc(void *argument)
   /* Infinite loop */
 	for(;;)
 	{
-
-		_cprintf("SubTask = %d\r\n", 4);
 		//exec_audioProc_subTask[audioProc_subTask]();
 	    osDelay(1000);
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 	}
+
+	// Clean Task
+	_printc("/!\\ Killing TASK_audioProc !\r\n");
+	osThreadTerminate(NULL);
   /* USER CODE END TASK_audioProc */
 }
 
@@ -431,7 +458,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-  _cprintf("/!\\ FATAL ERROR !\r\n");
+  _printc("/!\\ FATAL ERROR !\r\n");
   __disable_irq();
   while (1)
   {
@@ -456,4 +483,3 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

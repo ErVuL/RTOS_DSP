@@ -5,7 +5,7 @@
 #include "usbd_cdc_if.h"
 #include <signalProc_cortexM4.h>
 #include <TASK_AudioProc.h>
-
+#include "serialCom.h"
 
 const uint8_t (*exec_audioProc_subTask[N_SUBTASK])() =
 										{
@@ -89,12 +89,11 @@ void initTask_audioProc(void)
 uint8_t wait(void)
 {
 	char cmd;
-	CDC_getCmdArg("%c", &cmd);
 	if(oldTask != WAIT)
 	{
 		if(cmd == 'q')
 		{
-			_cprintf("Process stopped by user.\r\n");
+			_printc("Process stopped by user.\r\n");
 		}
 	}
 
@@ -120,18 +119,17 @@ uint8_t process(void)
 	if(oldTask != PROCESS)
 	{
 		/* Read command args and disable keyboard printing */
-		nArg = CDC_getCmdArg("%7s%3s", cmd, &arg0);
 		if(nArg > 1 && !strcmp(arg0, "-nf"))
 		{
-			_cprintf("FIR filter disabled by user.\r\n");
+			_printc("FIR filter disabled by user.\r\n");
 			FIR_PROCESS = 0;
 		}
 		else
 		{
-			_cprintf("Using default parameters.\r\n");
+			_printc("Using default parameters.\r\n");
 			FIR_PROCESS = 1;
 		}
-		_cprintf("Processing, type \"q\" to stop.\r\n");
+		_printc("Processing, type \"q\" to stop.\r\n");
 	}
 
 	/* Read audio data */
@@ -167,25 +165,24 @@ uint8_t generate(void)
 	if(oldTask != GENERATE)
 	{
 		/* Read command args and disable keyboard printing */
-		nArg = CDC_getCmdArg("%8s -%6s %d %d", NULL, &arg0, &arg1, &arg2);
 		if (nArg > 3 && !strcmp(arg0, "wgn"))
 		{
 			std_dev = arg1;
 			mean = arg2;
-			_cprintf("White Gaussian noise:\r\n");
-			_cprintf("- std_dev = %d\r\n", std_dev);
-			_cprintf("- mean    = %d\r\n", mean);
-			_cprintf("Generating signal, type \"q\" to stop.\r\n");
+			_printc("White Gaussian noise:\r\n");
+			_printc("- std_dev = %d\r\n", std_dev);
+			_printc("- mean    = %d\r\n", mean);
+			_printc("Generating signal, type \"q\" to stop.\r\n");
 		}
 		else
 		{
 			std_dev = 100000000;
 			mean = 0;
-			_cprintf("Using default parameters.\r\n");
-			_cprintf("White Gaussian noise:\r\n");
-		    _cprintf("- std_dev = %d\r\n", std_dev);
-		    _cprintf("- mean    = %d\r\n", mean);
-			_cprintf("Generating signal, type \"q\" to stop.\r\n");
+			_printc("Using default parameters.\r\n");
+			_printc("White Gaussian noise:\r\n");
+			_printc("- std_dev = %d\r\n", std_dev);
+			_printc("- mean    = %d\r\n", mean);
+			_printc("Generating signal, type \"q\" to stop.\r\n");
 		}
 	}
 

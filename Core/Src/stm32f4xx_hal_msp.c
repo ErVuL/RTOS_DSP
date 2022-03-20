@@ -225,4 +225,3 @@ void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
 
 /* USER CODE END 1 */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

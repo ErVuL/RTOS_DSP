@@ -114,7 +114,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
 
-uint8_t CDC_getCmdArg(const char *format, ...);
+uint8_t CDC_Transmit_NB(uint8_t* Buf, uint16_t Len);
 /* USER CODE END EXPORTED_FUNCTIONS */
 
 /**
@@ -135,4 +135,3 @@ uint8_t CDC_getCmdArg(const char *format, ...);
 
 #endif /* __USBD_CDC_IF_H__ */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -101,12 +101,8 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-static uint16_t CDC_RX_DATA_PENDING;	        // Serial data pending count (separated by '\0' or '\r')
+static _Bool PortOpen = false;
 
-// Circular buffer declaration and initialization
-extern osMutexId_t CDC_RxMutexHandle;
-extern osMutexId_t CDC_TxMutexHandle;
-_Bool HOST_PORT_COM_OPEN 	= false;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -140,7 +136,6 @@ static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-static _Bool CDC_flush(void);
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -244,19 +239,21 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 
 		if ((req->wValue & 0x0001) != 0)
 		{
-			HOST_PORT_COM_OPEN = true;
+			SER_open();
+			PortOpen = true;
 			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 		}
 		else
 		{
-			HOST_PORT_COM_OPEN = false;
+			SER_close();
+			PortOpen = false;
 			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		}
 		break;
 
 	case CDC_SEND_BREAK:
-
-		HOST_PORT_COM_OPEN = false;
+		SER_close();
+		PortOpen = false;
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		break;
 
@@ -287,7 +284,6 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
 		uint8_t result = USBD_OK;;
-		static uint8_t VT100cmdSeq;
 
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
 
@@ -299,7 +295,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 			return result;
 		}
 
-		SER_receive(uint8_t* Buf, uint32_t *Len);
+		SER_receive(Buf, Len);
 
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 
@@ -325,8 +321,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  if (hcdc->TxState != 0){
-    return USBD_BUSY;
+  while(hcdc->TxState != 0 && PortOpen){
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
@@ -360,7 +355,23 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+uint8_t CDC_Transmit_NB(uint8_t* Buf, uint16_t Len)
+{
+  uint8_t result = USBD_OK;
+  /* USER CODE BEGIN 7 */
 
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  if(hcdc->TxState != 0 || !PortOpen){
+	  return USBD_BUSY;
+  }
+  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+  result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /* USER CODE END 7 */
+  return result;
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
@@ -371,5 +382,3 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 /**
   * @}
   */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

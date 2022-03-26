@@ -101,8 +101,8 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-static _Bool PortOpen = false;
-
+static _Bool HOST_PORT_COM_OPEN = false;
+uint8_t rxBuf[PRINTF_BLOCK_SIZE];
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -160,7 +160,7 @@ static int8_t CDC_Init_FS(void)
 {
   /* USER CODE BEGIN 3 */
   /* Set Application Buffers */
-	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS); // Necessary for init  but will be over written by first run of CDC_Receive_FS()
+	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, rxBuf);
     return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -240,20 +240,20 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 		if ((req->wValue & 0x0001) != 0)
 		{
 			SER_open();
-			PortOpen = true;
+			HOST_PORT_COM_OPEN = true;
 			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 		}
 		else
 		{
 			SER_close();
-			PortOpen = false;
+			HOST_PORT_COM_OPEN = false;
 			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		}
 		break;
 
 	case CDC_SEND_BREAK:
 		SER_close();
-		PortOpen = false;
+		HOST_PORT_COM_OPEN = false;
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		break;
 
@@ -321,7 +321,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  while(hcdc->TxState != 0 && PortOpen){
+  while(hcdc->TxState != 0 && HOST_PORT_COM_OPEN){
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
@@ -355,23 +355,7 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
-uint8_t CDC_Transmit_NB(uint8_t* Buf, uint16_t Len)
-{
-  uint8_t result = USBD_OK;
-  /* USER CODE BEGIN 7 */
 
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  if(hcdc->TxState != 0 || !PortOpen){
-	  return USBD_BUSY;
-  }
-  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
-  result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
-
-  /* USER CODE END 7 */
-  return result;
-}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

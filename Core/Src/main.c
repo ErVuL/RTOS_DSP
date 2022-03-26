@@ -60,7 +60,7 @@ osThreadId_t UI_taskHandle;
 const osThreadAttr_t UI_task_attributes = {
   .name = "UI_task",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for audioProc_task */
 osThreadId_t audioProc_taskHandle;
@@ -90,9 +90,6 @@ const osSemaphoreAttr_t CDC_TxMutexHandle_attributes = {
   .name = "CDC_TxMutexHandle"
 };
 /* USER CODE BEGIN PV */
-//extern const uint8_t (*exec_audioProcess_subTask[N_SUBTASK])();		// Subtask array of function pointer
-extern const char *audioProc_subTaskCmdList[N_SUBTASK];				// Subtask command list
-uint8_t audioProc_subTask = PROCESS;
 uint16_t I2S2_txBuf[I2S2_BUFLEN]; 					// I2S2 rxBuffer for PmodI2S2
 uint16_t I2S2_rxBuf[I2S2_BUFLEN]; 					// I2S2 txBuffer for PmodI2S2
 xSemaphoreHandle AUDIOPROCESS_SEM = 0;
@@ -367,26 +364,7 @@ static void MX_GPIO_Init(void)
   * @param  argument: Not used
   * @retval None
   */
-
-const SER_cmdStruct cmdStructTab[N_CMD] = {
-
-		{
-		"clear",
-		"- clear \r\n\t * Clear the screen.",
-		&SER_clc
-		},
-		{
-		"help",
-		"- help \r\n\t * Display all commands --help.",
-		&SER_help
-		},
-		{
-		"info",
-		"- info \r\n\t * Display build information.",
-		&SER_info
-		}
-};
-
+extern const SER_cmdStruct cmdStructTab[N_CMD];
 /* USER CODE END Header_TASK_serialUI */
 void TASK_serialUI(void *argument)
 {
@@ -401,7 +379,9 @@ void TASK_serialUI(void *argument)
   _printf("\r\n                    ####################\r\n");
   _printf("                    ## RTOS DSP v%d.%02d ##\r\n", MAJ_VERSION, MIN_VERSION);
   _printf("                    ####################\r\n\n");
+
   /* Infinite loop */
+  _printf("Serial UI task started.\r\n");
   for(;;)
   {
 		/* Check for serial command */
@@ -413,7 +393,7 @@ void TASK_serialUI(void *argument)
   }
 
   // Clean Task
-  _printc("/!\\ Killing TASK_serialUI !\r\n");
+  _printf("/!\\ Killing TASK_serialUI !\r\n");
   osThreadTerminate(NULL);
 
   /* USER CODE END 5 */
@@ -425,22 +405,24 @@ void TASK_serialUI(void *argument)
 * @param argument: Not used
 * @retval None
 */
+extern const uint8_t (*ExecAudioProcessing[AP_NTASK])(void);
 /* USER CODE END Header_TASK_audioProc */
 void TASK_audioProc(void *argument)
 {
   /* USER CODE BEGIN TASK_audioProc */
+
 	osDelay(1500);
-	//initTask_audioProc();
+	initTask_audioProc();
+
   /* Infinite loop */
+	_printf("Audio processing task started.\r\n");
 	for(;;)
 	{
-		//exec_audioProc_subTask[audioProc_subTask]();
-	    osDelay(1000);
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+		ExecAudioProcessing[AP_getTask()]();
 	}
 
 	// Clean Task
-	_printc("/!\\ Killing TASK_audioProc !\r\n");
+	_printf("/!\\ Killing TASK_audioProc !\r\n");
 	osThreadTerminate(NULL);
   /* USER CODE END TASK_audioProc */
 }
@@ -475,7 +457,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-  _printc("/!\\ FATAL ERROR !\r\n");
+  _printf("/!\\ FATAL ERROR !\r\n");
   __disable_irq();
   while (1)
   {

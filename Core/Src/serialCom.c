@@ -7,6 +7,7 @@
 #include "cmsis_os.h"
 #include "serialCom.h"
 #include "serialCom.h"
+#include "TASK_AudioProc.h"
 
 
 static _Bool HOST_PORT_COM_OPEN = false;
@@ -29,7 +30,35 @@ static CB_uint8_t txCBuf = {
 		&txbuf[0]
 };
 
-extern const SER_cmdStruct cmdStructTab[N_CMD];
+const SER_cmdStruct cmdStructTab[N_CMD] = {
+
+		{
+		"clear",
+		"- clear \r\n\t * Clear the screen.",
+		&SER_clc
+		},
+		{
+		"help",
+		"- help \r\n\t * Display all commands --help.",
+		&SER_help
+		},
+		{
+		"info",
+		"- info \r\n\t * Display build information.",
+		&SER_info
+		},
+		{
+		"process",
+		"- process \r\n\t * Start audio processing.",
+		&AP_setPROCESS
+		},
+		{
+		"wgn",
+		"- wgn --mean=%d --stdev=%d \r\n\t * Generate white gaussian noise with specified "
+		                           "\r\n\t   mean and standard deviation.",
+		&AP_setWGN
+		}
+};
 
 uint8_t SER_info(char* args)
 {
@@ -42,7 +71,7 @@ uint8_t SER_help(char* args)
 {
 	_printf("\r\n");
 	for(int ii = 0; ii < N_CMD; ii++)
-	{	_printf("%s\r\n", cmdStructTab[ii].Help);
+	{	_printf("%s\r\n\n", cmdStructTab[ii].Help);
 	}
 	_printf("\r\n");
 	return 0;
@@ -65,6 +94,7 @@ void SER_close(void)
 {
 	HOST_PORT_COM_OPEN = false;
 }
+
 
 uint32_t SER_receive(uint8_t* buf, uint32_t *len)
 {
@@ -156,7 +186,6 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 					break;
 				}
 			}
-
 		}
 
 		if(cmdFound == len)
@@ -207,6 +236,25 @@ void _printf(const char *format, ...)
 	}
 }
 
+void _printc(uint8_t FG, uint8_t BG, const char *format, ...)
+{
+	va_list arg;
+	uint8_t UserTxBufferFS[PRINTF_BLOCK_SIZE];
+
+	if (HOST_PORT_COM_OPEN)
+	{
+		osMutexAcquire(CDC_TxMutexHandle, osWaitForever);
+		sprintf((char*) UserTxBufferFS, "\033[%2d;%2dm", FG, BG);
+		CB_write_u8(&txCBuf, (uint8_t *) UserTxBufferFS, 8);
+		va_start(arg, format);
+		vsprintf((char*) UserTxBufferFS, format, arg);
+		va_end(arg);
+		CB_write_u8(&txCBuf, (uint8_t *) UserTxBufferFS, strlen((char*) UserTxBufferFS));
+		CB_write_u8(&txCBuf, (uint8_t *) "\033[90;37m", 8);
+		osMutexRelease(CDC_TxMutexHandle);
+	}
+}
+
 void _printn(const char *format, ...)
 {
 	va_list arg;
@@ -235,7 +283,7 @@ void _prints(uint8_t* stream, uint32_t len)
 	}
 }
 
-void _printc(const char *format, ...)
+void _printd(const char *format, ...)
 {
 	va_list arg;
 	uint32_t clktime;
@@ -244,9 +292,9 @@ void _printc(const char *format, ...)
 	if (HOST_PORT_COM_OPEN)
 	{
 		clktime = HAL_GetTick();
-		sprintf((char*) UserTxBufferFS, "\r[%02lu:%02lu:%02lu.%03lu] ", (clktime/3600000)%100, (clktime/60000)%60, (clktime/1000)%60, clktime%1000);
+		sprintf((char*) UserTxBufferFS, "[%02lu:%02lu:%02lu.%03lu] ", (clktime/3600000)%100, (clktime/60000)%60, (clktime/1000)%60, clktime%1000);
 		va_start(arg, format);
-		vsprintf((char*) &UserTxBufferFS[16], format, arg);
+		vsprintf((char*) &UserTxBufferFS[15], format, arg);
 		va_end(arg);
 
 		osMutexAcquire(CDC_TxMutexHandle, osWaitForever);

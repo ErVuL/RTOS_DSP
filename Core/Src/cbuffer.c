@@ -123,7 +123,7 @@ uint32_t CB_readUntil_u8(uint8_t* oBuf, CB_uint8_t* cBuf, uint8_t val, uint32_t 
 		{	cBuf->read_ptr++;
 		}
 		if(oBuf[ii] == val)
-		{	return ii;
+		{	break;
 		}
 		ii++;
 	}

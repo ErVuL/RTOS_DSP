@@ -5,10 +5,13 @@
 #include "usbd_cdc_if.h"
 #include "cmsis_os2.h"
 
-#define SERIAL_BLOCK_SIZE	  32
-#define PRINTF_BLOCK_SIZE	  128
-#define END_CMD_CHAR ' '
-#define N_CMD		 3
+#define SERIAL_BLOCK_SIZE	  64
+#define PRINTF_BLOCK_SIZE	  256
+#define END_CMD_CHAR 		  ' '
+#define N_CMD		 		  5
+
+#define GETNAME(var)  #var
+#define _PRINT32(var)  _printf("%s = %ld\r\n", GETNAME(var), var)
 
 extern osMutexId_t CDC_RxMutexHandle;
 extern osMutexId_t CDC_TxMutexHandle;
@@ -28,8 +31,10 @@ uint8_t SER_clc(char* args);
 /* Print and scan functions */
 void     _printf(const char *format, ...);         // INF timeout
 void     _prints(uint8_t* stream, uint32_t len);   // No  semaphore
-void     _printc(const char *format, ...);         // INF timeout
+void     _printd(const char *format, ...);         // INF timeout
 void 	 _printn(const char *format, ...);         // 0   timeout
+void 	 _printc(uint8_t FG, uint8_t BG,
+		         const char *format, ...);		   // INF timeout
 void     _scanf(const char *format, ...);		   // INF timeout
 uint32_t _scans(uint8_t* stream);                  // No  semaphore
 
@@ -48,5 +53,7 @@ void 	 SER_scanLock(void);
 void 	 SER_printUnlock(void);
 void 	 SER_scanUnlock(void);
 void 	 SER_flush(void);
+void 	 SER_clear(void);
+
 
 #endif /* __SERIALCOM_H__ */

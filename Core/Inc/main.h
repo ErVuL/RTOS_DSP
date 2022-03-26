@@ -50,14 +50,20 @@ extern "C" {
 #define	MAJ_VERSION		2
 #define	MIN_VERSION		3
 
+
+
 #define N_AUDIO_INPUT	2			// Number of audio input channel
 #define N_AUDIO_OUTPUT	2			// Number of audio output channel
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+uint8_t AP_setPROCESS(char* args);
+uint8_t AP_setWGN(char* args);
+int32_t AP_getTask(void);
 
 /* USER CODE END EFP */
 

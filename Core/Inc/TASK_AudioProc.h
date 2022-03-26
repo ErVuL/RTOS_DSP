@@ -10,16 +10,30 @@
 
 /* Define */
 #define FIRQ31_NTAP 	64			// Number of FIR coefs
-#define N_SUBTASK		5 			// Number of main task
+#define AP_NTASK		5 			// Number of main task
 #define TASKCMDLEN		16
 
-/* Main task enumeration */
-enum MainTask {WAIT, PROCESS, GENERATE, INFO, HELP};
+typedef struct
+{
+	int32_t stdev;
+	int32_t mean;
+	int32_t task;
+}AP_settingStruct;
 
 /* Exported functions */
 void initTask_audioProc(void);
-uint8_t wait(void);
-uint8_t process(void);
-uint8_t generate(void);
+
+enum AudioProc_TASK
+{
+	AP_PROCESS,
+	AP_WAIT,
+	AP_WGN
+};
+
+uint8_t process(void);  // Audio processing I/O
+uint8_t wait(void);     // Audio to 0
+uint8_t wgn(void);      // White Gaussian Noise generation
+uint8_t AP_setPROCESS(char* args);
+uint8_t AP_setWGN(char* args);
 
 #endif /* INC_TASK_AUDIOPROC_H_ */

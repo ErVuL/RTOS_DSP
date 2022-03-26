@@ -7,21 +7,23 @@
 #include <TASK_AudioProc.h>
 #include "serialCom.h"
 
-const uint8_t (*exec_audioProc_subTask[N_SUBTASK])() =
-										{
-										&wait,    // Task automatically activated when serial port com is open
-										&process, // Default Task when no serial port com
-										&generate,
-										};
+extern CB_int32_t CB_LtxI2S2;
+extern CB_int32_t CB_RtxI2S2;
+extern CB_int32_t CB_LrxI2S2;
+extern CB_int32_t CB_RrxI2S2;
 
-const char* audioProc_subTaskCmdList[N_SUBTASK] =
+const uint8_t (*ExecAudioProcessing[AP_NTASK])(void) =
 										{
-										"q",
-										"process",
-										"generate",
-										"help",
-										"info"
+										&process,
+										&wait,
+										&wgn
 										};
+static AP_settingStruct AP_settings =
+{
+		0, 		// mean
+		10000,  // stdev
+		AP_WAIT // task
+};
 
 /* Particular FIR Coeffs */
 
@@ -66,134 +68,115 @@ q31_t pCoeffs2[FIRQ31_NTAP] = {
 };
 
 /* ARM q31 FIR struct and main task FIR struct */
-q31_t pState1[FIRQ31_NTAP+BUFLEN-1];
-q31_t pState2[FIRQ31_NTAP+BUFLEN-1];
+q31_t pState1[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
+q31_t pState2[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
 arm_fir_instance_q31 FIR1_q31;
 arm_fir_instance_q31 FIR2_q31;
-static uint8_t oldTask = PROCESS;
 
 /* Audio buffers and struct */
-q31_t buffer1[BUFLEN];	// Left  channel
-q31_t buffer2[BUFLEN];  // Right channel
+q31_t Lbuf[I2S2_AUDIOLEN];	// Left  channel
+q31_t Rbuf[I2S2_AUDIOLEN];  // Right channel
 
 /* Function definition */
 void initTask_audioProc(void)
 {
 	/* FIR initialization */
-	arm_fir_init_q31(&FIR1_q31, FIRQ31_NTAP, pCoeffs1, pState1, BUFLEN);
-	arm_fir_init_q31(&FIR2_q31, FIRQ31_NTAP, pCoeffs2, pState2, BUFLEN);
+	arm_fir_init_q31(&FIR1_q31, FIRQ31_NTAP, pCoeffs1, pState1, I2S2_AUDIOLEN);
+	arm_fir_init_q31(&FIR2_q31, FIRQ31_NTAP, pCoeffs2, pState2, I2S2_AUDIOLEN);
 }
+
 
 uint8_t wait(void)
 {
-	char cmd;
-	if(oldTask != WAIT)
-	{
-		if(cmd == 'q')
-		{
-			_printc("Process stopped by user.\r\n");
-		}
-	}
-
 	/* Send zero to pmodI2S2 audio output */
-	memset(buffer1, 0, sizeof(q31_t)*BUFLEN);
-	memset(buffer2, 0, sizeof(q31_t)*BUFLEN);
-	PMODI2S2_stereoW_q31(buffer1, buffer2);
+	memset(Lbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
+	memset(Rbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
+	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
+	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
 
-	/* Turn off green LED */
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
-	oldTask = WAIT;
-	return WAIT;
+	/* Toggle green LED */
+	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+
+	return 0;
 }
 
 uint8_t process(void)
 {
-	char cmd[8];
-	char arg0[4];
-	uint8_t nArg;
-	static int FIR_PROCESS;
-
-	/* If necessary read command arguments */
-	if(oldTask != PROCESS)
-	{
-		/* Read command args and disable keyboard printing */
-		if(nArg > 1 && !strcmp(arg0, "-nf"))
-		{
-			_printc("FIR filter disabled by user.\r\n");
-			FIR_PROCESS = 0;
-		}
-		else
-		{
-			_printc("Using default parameters.\r\n");
-			FIR_PROCESS = 1;
-		}
-		_printc("Processing, type \"q\" to stop.\r\n");
-	}
-
 	/* Read audio data */
-	PMODI2S2_stereoR_q31(buffer1, buffer2);
+	CB_read_i32(Lbuf, &CB_LrxI2S2, I2S2_AUDIOLEN);
+	CB_read_i32(Rbuf, &CB_RrxI2S2, I2S2_AUDIOLEN);
 
 	/* Signal Processing */
-	if(FIR_PROCESS)
-	{
-		arm_fir_q31(&FIR1_q31, buffer1, buffer1, BUFLEN);
-		arm_fir_q31(&FIR2_q31, buffer2, buffer2, BUFLEN);
-	}
+	arm_fir_q31(&FIR1_q31, Lbuf, Lbuf, I2S2_AUDIOLEN);
+	arm_fir_q31(&FIR2_q31, Rbuf, Rbuf, I2S2_AUDIOLEN);
 
 	/* Write audio data */
-	PMODI2S2_stereoW_q31(buffer1, buffer2);
+	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
+	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
 
 	/* Toggle green LED */
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 
-	oldTask = PROCESS;
-	return PROCESS;
+	return 0;
 }
 
-uint8_t generate(void)
+uint8_t wgn(void)
 {
-	char arg0[7];
-	q31_t arg1;
-	q31_t arg2;
-	uint8_t nArg;
-	static q31_t std_dev = 100000000;
-	static q31_t mean = 0;
-
-	/* If necessary read command arguments */
-	if(oldTask != GENERATE)
-	{
-		/* Read command args and disable keyboard printing */
-		if (nArg > 3 && !strcmp(arg0, "wgn"))
-		{
-			std_dev = arg1;
-			mean = arg2;
-			_printc("White Gaussian noise:\r\n");
-			_printc("- std_dev = %d\r\n", std_dev);
-			_printc("- mean    = %d\r\n", mean);
-			_printc("Generating signal, type \"q\" to stop.\r\n");
-		}
-		else
-		{
-			std_dev = 100000000;
-			mean = 0;
-			_printc("Using default parameters.\r\n");
-			_printc("White Gaussian noise:\r\n");
-			_printc("- std_dev = %d\r\n", std_dev);
-			_printc("- mean    = %d\r\n", mean);
-			_printc("Generating signal, type \"q\" to stop.\r\n");
-		}
-	}
-
 	/* Compute random gaussian signal */
-	randGauss_q31(std_dev, mean, buffer1, BUFLEN);
-	randGauss_q31(std_dev, mean, buffer2, BUFLEN);
+	randGauss_q31(AP_settings.stdev, AP_settings.mean, Lbuf, I2S2_AUDIOLEN);
+	randGauss_q31(AP_settings.stdev, AP_settings.mean, Rbuf, I2S2_AUDIOLEN);
 
 	/* Write audio data */
-	PMODI2S2_stereoW_q31(buffer1, buffer2);
+	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
+	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
 
 	/* Toggle green LED */
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 
-	oldTask = GENERATE;
-	return GENERATE;
+	return 0;
+}
+
+
+
+uint8_t AP_setPROCESS(char* args)
+{
+	AP_settings.task = AP_PROCESS;
+	_printf("Audio processing mode set.\r\n");
+	return 0;
+}
+
+uint8_t AP_setWGN(char* args)
+{
+	int32_t valtmp;
+	char*   strtmp;
+
+	AP_settings.task = AP_WGN;
+	_printf("Noise generation mode set.\r\n");
+
+	/* Parse argument mean */
+	valtmp = AP_settings.mean;
+	strtmp = strstr(args, "--mean=");
+	sscanf(strtmp, "--mean=%ld", &valtmp);
+	if(valtmp != AP_settings.mean)
+	{
+		AP_settings.mean = valtmp;
+		_PRINT32(AP_settings.mean);
+	}
+
+	/* Parse argument stdev */
+	valtmp = AP_settings.stdev;
+	strtmp = strstr(args, "--stdev=");
+	sscanf(strtmp, "--stdev=%ld", &valtmp);
+	if(valtmp != AP_settings.stdev)
+	{
+		AP_settings.stdev = valtmp;
+		_PRINT32(AP_settings.stdev);
+	}
+
+	return 0;
+}
+
+int32_t AP_getTask(void)
+{
+	return AP_settings.task;
 }

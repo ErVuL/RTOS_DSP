@@ -94,6 +94,8 @@ uint8_t wait(void)
 	memset(Rbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
 	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
+	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
+	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
 	osDelay(1000);
 
 	/* Toggle green LED */
@@ -144,6 +146,7 @@ uint8_t AP_setPROCESS(char* args)
 {
 	AP_settings.task = AP_PROCESS;
 	_printd("Audio processing mode set.\r\n");
+	_printd("5 kHz Low-Pass FIR with 64 coeffs\r\n");
 	return 0;
 }
 

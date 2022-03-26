@@ -48,7 +48,7 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 #define	MAJ_VERSION		2
-#define	MIN_VERSION		3
+#define	MIN_VERSION		4
 
 
 

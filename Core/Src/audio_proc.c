@@ -94,6 +94,7 @@ uint8_t wait(void)
 	memset(Rbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
 	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
+	osDelay(1000);
 
 	/* Toggle green LED */
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
@@ -142,7 +143,14 @@ uint8_t wgn(void)
 uint8_t AP_setPROCESS(char* args)
 {
 	AP_settings.task = AP_PROCESS;
-	_printf("Audio processing mode set.\r\n");
+	_printd("Audio processing mode set.\r\n");
+	return 0;
+}
+
+uint8_t AP_setWAIT(char* args)
+{
+	AP_settings.task = AP_WAIT;
+	_printd("Wait mode set.\r\n");
 	return 0;
 }
 
@@ -152,7 +160,7 @@ uint8_t AP_setWGN(char* args)
 	char*   strtmp;
 
 	AP_settings.task = AP_WGN;
-	_printf("Noise generation mode set.\r\n");
+	_printd("Noise generation mode set.\r\n");
 
 	/* Parse argument mean */
 	valtmp = AP_settings.mean;

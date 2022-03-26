@@ -33,6 +33,11 @@ static CB_uint8_t txCBuf = {
 const SER_cmdStruct cmdStructTab[N_CMD] = {
 
 		{
+		"build",
+		"- build \r\n\t * Display build information.",
+		&SER_build
+		},
+		{
 		"clear",
 		"- clear \r\n\t * Clear the screen.",
 		&SER_clc
@@ -43,14 +48,14 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		&SER_help
 		},
 		{
-		"info",
-		"- info \r\n\t * Display build information.",
-		&SER_info
-		},
-		{
 		"process",
 		"- process \r\n\t * Start audio processing.",
 		&AP_setPROCESS
+		},
+		{
+		"stop",
+		"- stop \r\n\t * Audio process wait mode.",
+		&AP_setWAIT
 		},
 		{
 		"wgn",
@@ -60,10 +65,9 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		}
 };
 
-uint8_t SER_info(char* args)
+uint8_t SER_build(char* args)
 {
-	_printf("\r\n- Code version ..............: %d.%02d\r\n", 	MAJ_VERSION, MIN_VERSION);
-	_printf(    "- Build date ................: %s @ %s UTC+1\r\n\n", __DATE__, __TIME__);
+	_printf("v%d.%02d, %s @ %s UTC+1.\r\n",MAJ_VERSION, MIN_VERSION, __DATE__, __TIME__);
 	return 0;
 }
 
@@ -190,7 +194,7 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 
 		if(cmdFound == len)
 		{
-			_printf("/!\\ Command \"%s\" not found !\r\n", cmd);
+			_printd("/!\\ Command \"%s\" not found !\r\n", cmd);
 			availableCMD--;
 			osMutexRelease(CDC_RxMutexHandle);
 			return cmdFound;

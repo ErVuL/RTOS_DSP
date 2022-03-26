@@ -381,7 +381,7 @@ void TASK_serialUI(void *argument)
   _printf("                    ####################\r\n\n");
 
   /* Infinite loop */
-  _printf("Serial UI task started.\r\n");
+  _printd("Serial UI task started.\r\n");
   for(;;)
   {
 		/* Check for serial command */
@@ -393,7 +393,7 @@ void TASK_serialUI(void *argument)
   }
 
   // Clean Task
-  _printf("/!\\ Killing TASK_serialUI !\r\n");
+  _printd("/!\\ Killing TASK_serialUI !\r\n");
   osThreadTerminate(NULL);
 
   /* USER CODE END 5 */
@@ -415,14 +415,14 @@ void TASK_audioProc(void *argument)
 	initTask_audioProc();
 
   /* Infinite loop */
-	_printf("Audio processing task started.\r\n");
+	_printd("Audio processing task started.\r\n");
 	for(;;)
 	{
 		ExecAudioProcessing[AP_getTask()]();
 	}
 
 	// Clean Task
-	_printf("/!\\ Killing TASK_audioProc !\r\n");
+	_printd("/!\\ Killing TASK_audioProc !\r\n");
 	osThreadTerminate(NULL);
   /* USER CODE END TASK_audioProc */
 }

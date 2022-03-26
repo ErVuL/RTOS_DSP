@@ -38,6 +38,7 @@ uint8_t wgn(void);      // White Gaussian Noise generation
 
 /* Functions answering to commands from serial communication */
 uint8_t AP_setPROCESS(char* args);
+uint8_t AP_setWAIT(char* args);
 uint8_t AP_setWGN(char* args);
 
 #endif /* INC_AUDIO_PROC_H_ */

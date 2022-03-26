@@ -8,10 +8,10 @@
 #define SERIAL_BLOCK_SIZE	  128
 #define PRINTF_BLOCK_SIZE	  512
 #define END_CMD_CHAR 		  ' '
-#define N_CMD		 		  5
+#define N_CMD		 		  6
 
 #define GETNAME(var)  #var
-#define _PRINT32(var)  _printf("%s = %ld\r\n", GETNAME(var), var)
+#define _PRINT32(var)  _printd("%s = %ld\r\n", GETNAME(var), var)
 
 extern osMutexId_t CDC_RxMutexHandle;
 extern osMutexId_t CDC_TxMutexHandle;
@@ -24,7 +24,7 @@ typedef struct
 }SER_cmdStruct;
 
 /* Functions answering to commands from serial */
-uint8_t SER_info(char* args);
+uint8_t SER_build(char* args);
 uint8_t SER_help(char* args);
 uint8_t SER_clc(char* args);
 

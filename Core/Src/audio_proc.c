@@ -1,11 +1,11 @@
+#include <audio_proc.h>
+#include <serial_com.h>
 #include <stdint.h>
 #include "stm32f407xx.h"
 #include "arm_math.h"
 #include "pmodI2S2.h"
 #include "usbd_cdc_if.h"
 #include <signalProc_cortexM4.h>
-#include <TASK_AudioProc.h>
-#include "serialCom.h"
 
 extern CB_int32_t CB_LtxI2S2;
 extern CB_int32_t CB_RtxI2S2;
@@ -13,11 +13,12 @@ extern CB_int32_t CB_LrxI2S2;
 extern CB_int32_t CB_RrxI2S2;
 
 const uint8_t (*ExecAudioProcessing[AP_NTASK])(void) =
-										{
-										&process,
-										&wait,
-										&wgn
-										};
+{
+		&process,
+		&wait,
+		&wgn
+};
+
 static AP_settingStruct AP_settings =
 {
 		0, 		// mean
@@ -172,7 +173,6 @@ uint8_t AP_setWGN(char* args)
 		AP_settings.stdev = valtmp;
 		_PRINT32(AP_settings.stdev);
 	}
-
 	return 0;
 }
 

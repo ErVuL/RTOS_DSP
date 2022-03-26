@@ -1,13 +1,13 @@
 
+#include <audio_proc.h>
+#include <c_buffer.h>
+#include <serial_com.h>
+#include <serial_com.h>
 #include <stdarg.h>
 #include <string.h>
 #include "stm32f4xx_hal.h"
 #include <stdbool.h>
-#include "cbuffer.h"
 #include "cmsis_os.h"
-#include "serialCom.h"
-#include "serialCom.h"
-#include "TASK_AudioProc.h"
 
 
 static _Bool HOST_PORT_COM_OPEN = false;

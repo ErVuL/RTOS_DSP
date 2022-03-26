@@ -1,7 +1,7 @@
+#include <c_buffer.h>
 #include "stm32f4xx_hal.h"
 #include "pmodI2S2.h"
 #include "usbd_cdc_if.h"
-#include "cbuffer.h"
 
 /* I2S2 CallBack state */
 uint8_t I2S2_rxState = Busy;				// I2S2 rx CallBack state

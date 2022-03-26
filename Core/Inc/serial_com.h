@@ -1,12 +1,12 @@
 #ifndef __SERIALCOM_H__
 #define __SERIALCOM_H__
 
-#include "cbuffer.h"
+#include <c_buffer.h>
 #include "usbd_cdc_if.h"
 #include "cmsis_os2.h"
 
-#define SERIAL_BLOCK_SIZE	  64
-#define PRINTF_BLOCK_SIZE	  256
+#define SERIAL_BLOCK_SIZE	  128
+#define PRINTF_BLOCK_SIZE	  512
 #define END_CMD_CHAR 		  ' '
 #define N_CMD		 		  5
 
@@ -23,7 +23,7 @@ typedef struct
 	uint8_t (*ExecFunction)(char* args);
 }SER_cmdStruct;
 
-/* Main serial commands */
+/* Functions answering to commands from serial */
 uint8_t SER_info(char* args);
 uint8_t SER_help(char* args);
 uint8_t SER_clc(char* args);
@@ -38,7 +38,7 @@ void 	 _printc(uint8_t FG, uint8_t BG,
 void     _scanf(const char *format, ...);		   // INF timeout
 uint32_t _scans(uint8_t* stream);                  // No  semaphore
 
-/* Serial special commands */
+/* Serial exported functions */
 uint32_t SER_receive(uint8_t* buf, uint32_t *len);
 uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args);
 void     SER_clearLine(void);

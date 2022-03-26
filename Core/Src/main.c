@@ -18,6 +18,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <audio_proc.h>
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_device.h"
@@ -31,8 +32,7 @@
 #include <stdlib.h>
 #include <queue.h>
 #include <semphr.h>
-#include <TASK_AudioProc.h>
-#include "serialCom.h"
+#include <serial_com.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,10 +62,10 @@ const osThreadAttr_t UI_task_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
-/* Definitions for audioProc_task */
-osThreadId_t audioProc_taskHandle;
-const osThreadAttr_t audioProc_task_attributes = {
-  .name = "audioProc_task",
+/* Definitions for AP_task */
+osThreadId_t AP_taskHandle;
+const osThreadAttr_t AP_task_attributes = {
+  .name = "AP_task",
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
@@ -182,8 +182,8 @@ int main(void)
   /* creation of UI_task */
   UI_taskHandle = osThreadNew(TASK_serialUI, NULL, &UI_task_attributes);
 
-  /* creation of audioProc_task */
-  audioProc_taskHandle = osThreadNew(TASK_audioProc, NULL, &audioProc_task_attributes);
+  /* creation of AP_task */
+  AP_taskHandle = osThreadNew(TASK_audioProc, NULL, &AP_task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */

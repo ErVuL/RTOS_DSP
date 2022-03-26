@@ -12,8 +12,6 @@ const uint8_t (*exec_audioProc_subTask[N_SUBTASK])() =
 										&wait,    // Task automatically activated when serial port com is open
 										&process, // Default Task when no serial port com
 										&generate,
-										&help,
-										&info
 										};
 
 const char* audioProc_subTaskCmdList[N_SUBTASK] =
@@ -198,49 +196,4 @@ uint8_t generate(void)
 
 	oldTask = GENERATE;
 	return GENERATE;
-}
-
-uint8_t info(void)
-{
-	_printf("\r\n- DSP version ...............: %d.%02d\r\n", 	MAJ_VERSION, MIN_VERSION);
-	_printf("- Build date ................: %s @ %s UTC+1\r\n", __DATE__, __TIME__);
-	_printf("- Available task ............: %d\r\n", 			N_SUBTASK);
-	_printf("- I2S buffer length .........: %d sample\r\n", 	I2S2_BUFLEN);
-	_printf("- Audio input ...............: %d\r\n", 			N_AUDIO_INPUT);
-	_printf("- Audio output ..............: %d\r\n", 			N_AUDIO_OUTPUT);
-	_printf("- Frequency sampling ........: %d Hz\r\n", 		FREQ_SAMP);
-	_printf("- Resolution ................: %d bit/sample\r\n", NBITS);
-	_printf("- I/O buffer length .........: %d sample\r\n\n", 	BUFLEN);
-	oldTask = INFO;
-	return WAIT;
-}
-
-uint8_t help(void)
-{
-	_printf("\r\n>> process [-opt]\r\n"
-	        "        Process audio data with FIR filter activated\r\n"
-	        "        by default.\r\n\n"
-	        "        OPT : \r\n"
-	        "             -nf : Disable FIR filter.\r\n\n");
-
-	_printf(">> generate [-opt]\r\n"
-	        "        Signal generator. Generate a white Gaussian\r\n"
-			"        noise by default.\r\n\n"
-	        "        OPT : \r\n"
-	        "             -wgn %%d %%d : White Gaussian noise. \r\n"
-			"             The two integers (q31_t) are respectively\r\n"
-			"             the stdandard deviation and the mean of the\r\n"
-			"             Gaussian distribution.\r\n\n");
-
-	_printf(">> clear\r\n"
-	        "        Clear screen with VT100 command.\r\n\n");
-
-	_printf(">> info\r\n"
-	        "        Print some informations and main parameters.\r\n\n");
-
-	_printf(">> help\r\n"
-	        "        Print this command list.\r\n\n");
-
-	oldTask = HELP;
-	return WAIT;
 }

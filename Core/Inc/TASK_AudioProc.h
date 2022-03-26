@@ -21,7 +21,5 @@ void initTask_audioProc(void);
 uint8_t wait(void);
 uint8_t process(void);
 uint8_t generate(void);
-uint8_t info(void);
-uint8_t help(void);
 
 #endif /* INC_TASK_AUDIOPROC_H_ */

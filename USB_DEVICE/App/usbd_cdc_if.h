@@ -49,14 +49,13 @@
   * @{
   */
 /* Define size for the receive and transmit buffer over CDC */
-#define APP_RX_DATA_SIZE  256
-#define APP_TX_DATA_SIZE  256
+#define APP_RX_DATA_SIZE  512
+#define APP_TX_DATA_SIZE  512
 /* USER CODE BEGIN EXPORTED_DEFINES */
 /* Define size for the receive and transmit buffer over CDC */
 /* It's up to user to redefine and/or remove those define */
 #define CBUFFER_RX_DATA_SIZE (APP_RX_DATA_SIZE*8)
 #define CBUFFER_TX_DATA_SIZE (APP_TX_DATA_SIZE*8)
-#define CMD_SIZE			 64
 /* USER CODE END EXPORTED_DEFINES */
 
 /**

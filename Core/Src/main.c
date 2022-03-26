@@ -112,7 +112,8 @@ void TASK_audioProc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern const uint8_t (*exec_audioProc_subTask[N_SUBTASK])();
+extern const SER_cmdStruct cmdStructTab[N_CMD];
+
 /* USER CODE END 0 */
 
 /**
@@ -366,33 +367,49 @@ static void MX_GPIO_Init(void)
   * @param  argument: Not used
   * @retval None
   */
+
+const SER_cmdStruct cmdStructTab[N_CMD] = {
+
+		{
+		"clear",
+		"- clear \r\n\t * Clear the screen.",
+		&SER_clc
+		},
+		{
+		"help",
+		"- help \r\n\t * Display all commands --help.",
+		&SER_help
+		},
+		{
+		"info",
+		"- info \r\n\t * Display build information.",
+		&SER_info
+		}
+};
+
 /* USER CODE END Header_TASK_serialUI */
 void TASK_serialUI(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-
   uint32_t cmd;
   char args[64];
-  char* cmdList[4] = {"cmd1",
-		  	  	   	"cmd2",
-					"cmd3",
-					"cmd4"};
 
   osDelay(1000);
-  _printf("\r\n                    ###################\r\n");
-  _printf("                    ## RTOS DSP V%d.%d ##\r\n", MAJ_VERSION, MIN_VERSION);
-  _printf("                    ###################\r\n\n> ");
-
+  SER_clear();
+  _printf("\r\n                    ####################\r\n");
+  _printf("                    ## RTOS DSP v%d.%02d ##\r\n", MAJ_VERSION, MIN_VERSION);
+  _printf("                    ####################\r\n\n");
   /* Infinite loop */
   for(;;)
   {
 		/* Check for serial command */
-	  	if((cmd = SER_getCmd(cmdList, 4, args)) != 4)
+	  	if((cmd = SER_getCmd(cmdStructTab, N_CMD, args)) != N_CMD)
 	  	{
-	  		_printc("Cmd: %d, args: %s\r\n", cmd+1, args);
+	  		cmdStructTab[cmd].ExecFunction(args);
 	  	}
+	  	SER_flush();
   }
 
   // Clean Task

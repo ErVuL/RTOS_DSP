@@ -5,22 +5,37 @@
 #include "usbd_cdc_if.h"
 #include "cmsis_os2.h"
 
+#define SERIAL_BLOCK_SIZE	  32
+#define PRINTF_BLOCK_SIZE	  128
 #define END_CMD_CHAR ' '
-#define MAX_CMD_LEN  128
-#define N_CMD		 8
+#define N_CMD		 3
 
 extern osMutexId_t CDC_RxMutexHandle;
 extern osMutexId_t CDC_TxMutexHandle;
 
-uint32_t SER_receive(uint8_t* Buf, uint32_t *Len);
-_Bool    SER_flush(void);
-uint32_t SER_getCmd(char** cmdList, uint32_t len, char* args);
-void     _printf(const char *format, ...);
-void     _prints(uint8_t* stream, uint32_t len);
-void     _printc(const char *format, ...);
-void     _scanf(const char *format, ...);
-uint32_t _scans(uint8_t* stream);
-void     SER_clear(void);
+typedef struct
+{
+	char* Str;
+	char* Help;
+	uint8_t (*ExecFunction)(char* args);
+}SER_cmdStruct;
+
+/* Main serial commands */
+uint8_t SER_info(char* args);
+uint8_t SER_help(char* args);
+uint8_t SER_clc(char* args);
+
+/* Print and scan functions */
+void     _printf(const char *format, ...);         // INF timeout
+void     _prints(uint8_t* stream, uint32_t len);   // No  semaphore
+void     _printc(const char *format, ...);         // INF timeout
+void 	 _printn(const char *format, ...);         // 0   timeout
+void     _scanf(const char *format, ...);		   // INF timeout
+uint32_t _scans(uint8_t* stream);                  // No  semaphore
+
+/* Serial special commands */
+uint32_t SER_receive(uint8_t* buf, uint32_t *len);
+uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args);
 void     SER_clearLine(void);
 void     SER_setColor(uint8_t FG, uint8_t BG);
 void     SER_setDefaultColor(void);
@@ -32,6 +47,6 @@ void 	 SER_printLock(void);
 void 	 SER_scanLock(void);
 void 	 SER_printUnlock(void);
 void 	 SER_scanUnlock(void);
-
+void 	 SER_flush(void);
 
 #endif /* __SERIALCOM_H__ */

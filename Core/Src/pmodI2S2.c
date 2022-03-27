@@ -1,6 +1,7 @@
 #include <c_buffer.h>
 #include "stm32f4xx_hal.h"
 #include "pmodI2S2.h"
+#include "serial_com.h"
 #include "usbd_cdc_if.h"
 
 /* I2S2 CallBack state */
@@ -121,7 +122,6 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
 	int32_t Lbuf[I2S2_AUDIOLEN];
 	int32_t Rbuf[I2S2_AUDIOLEN];
-
 
 	/* Read input data from CAN24 */
 	pI2S2_rxBuf = &I2S2_rxBuf[0];

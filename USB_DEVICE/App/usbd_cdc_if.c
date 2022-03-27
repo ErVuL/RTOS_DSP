@@ -20,8 +20,6 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include <c_buffer.h>
-#include <serial_com.h>
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
@@ -30,6 +28,7 @@
 #include "stm32f4xx_hal.h"
 #include <stdbool.h>
 #include "cmsis_os.h"
+#include "serial_com.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/

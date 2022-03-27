@@ -18,7 +18,6 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <audio_proc.h>
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_device.h"
@@ -33,6 +32,7 @@
 #include <queue.h>
 #include <semphr.h>
 #include <serial_com.h>
+#include "audio_proc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -144,6 +144,7 @@ int main(void)
   MX_DMA_Init();
   MX_I2S2_Init();
   /* USER CODE BEGIN 2 */
+  HAL_I2SEx_TransmitReceive_DMA(&hi2s2, I2S2_txBuf, I2S2_rxBuf, I2S2_BUFLEN);
   /* USER CODE END 2 */
 
   /* Init scheduler */

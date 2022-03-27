@@ -111,8 +111,8 @@ uint8_t process(void)
 	CB_read_i32(Rbuf, &CB_RrxI2S2, I2S2_AUDIOLEN);
 
 	/* Signal Processing */
-	arm_fir_q31(&FIR1_q31, Lbuf, Lbuf, I2S2_AUDIOLEN);
-	arm_fir_q31(&FIR2_q31, Rbuf, Rbuf, I2S2_AUDIOLEN);
+	//arm_fir_q31(&FIR1_q31, Lbuf, Lbuf, I2S2_AUDIOLEN);
+	//arm_fir_q31(&FIR2_q31, Rbuf, Rbuf, I2S2_AUDIOLEN);
 
 	/* Write audio data */
 	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);

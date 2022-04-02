@@ -102,6 +102,7 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 static _Bool HOST_PORT_COM_OPEN = false;
 uint8_t rxBuf[PRINTF_BLOCK_SIZE];
+uint32_t SERIAL_UI_TASK_DELAY = 250;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -284,19 +285,14 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   /* USER CODE BEGIN 6 */
 		uint8_t result = USBD_OK;;
 
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
-
 		/* Get data from serial com */
 		USBD_CDC_SetRxBuffer(&hUsbDeviceFS, Buf);
 		if ((result = USBD_CDC_ReceivePacket(&hUsbDeviceFS)) != USBD_OK)
 		{
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 			return result;
 		}
 
 		SER_receive(Buf, Len);
-
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 
 		return result;
   /* USER CODE END 6 */
@@ -318,13 +314,11 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
 
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
   while(hcdc->TxState != 0 && HOST_PORT_COM_OPEN){
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /* USER CODE END 7 */
   return result;

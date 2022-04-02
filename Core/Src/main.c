@@ -79,20 +79,9 @@ osMutexId_t CDC_RxMutexHandle;
 const osMutexAttr_t CDC_RxMutex_attributes = {
   .name = "CDC_RxMutex"
 };
-/* Definitions for CDC_RxMutexHandle */
-osSemaphoreId_t CDC_RxMutexHandleHandle;
-const osSemaphoreAttr_t CDC_RxMutexHandle_attributes = {
-  .name = "CDC_RxMutexHandle"
-};
-/* Definitions for CDC_TxMutexHandle */
-osSemaphoreId_t CDC_TxMutexHandleHandle;
-const osSemaphoreAttr_t CDC_TxMutexHandle_attributes = {
-  .name = "CDC_TxMutexHandle"
-};
 /* USER CODE BEGIN PV */
 uint16_t I2S2_txBuf[I2S2_BUFLEN]; 					// I2S2 rxBuffer for PmodI2S2
 uint16_t I2S2_rxBuf[I2S2_BUFLEN]; 					// I2S2 txBuffer for PmodI2S2
-xSemaphoreHandle AUDIOPROCESS_SEM = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -109,7 +98,6 @@ void TASK_audioProc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern const SER_cmdStruct cmdStructTab[N_CMD];
 
 /* USER CODE END 0 */
 
@@ -159,13 +147,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
-
-  /* Create the semaphores(s) */
-  /* creation of CDC_RxMutexHandle */
-  CDC_RxMutexHandleHandle = osSemaphoreNew(1, 1, &CDC_RxMutexHandle_attributes);
-
-  /* creation of CDC_TxMutexHandle */
-  CDC_TxMutexHandleHandle = osSemaphoreNew(1, 1, &CDC_TxMutexHandle_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -366,6 +347,7 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 extern const SER_cmdStruct cmdStructTab[N_CMD];
+uint32_t SerialUI_TASKDELAY = 500;
 /* USER CODE END Header_TASK_serialUI */
 void TASK_serialUI(void *argument)
 {
@@ -391,7 +373,8 @@ void TASK_serialUI(void *argument)
 	  		cmdStructTab[cmd].ExecFunction(args);
 	  	}
 	  	SER_flush();
-	  	osDelay(100);
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
+		osDelay(SerialUI_TASKDELAY);
   }
 
   // Clean Task
@@ -412,7 +395,6 @@ extern const uint8_t (*ExecAudioProcessing[AP_NTASK])(void);
 void TASK_audioProc(void *argument)
 {
   /* USER CODE BEGIN TASK_audioProc */
-
 	osDelay(1500);
 	initTask_audioProc();
 
@@ -421,6 +403,7 @@ void TASK_audioProc(void *argument)
 	for(;;)
 	{
 		ExecAudioProcessing[AP_getTask()]();
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 	}
 
 	// Clean Task

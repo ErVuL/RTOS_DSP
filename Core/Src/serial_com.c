@@ -7,12 +7,14 @@
 #include <string.h>
 #include "stm32f4xx_hal.h"
 #include <stdbool.h>
+#include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
 
 
 static _Bool HOST_PORT_COM_OPEN = false;
 static uint32_t leftOffset = 0;
 static int8_t availableCMD = 0;
+extern uint32_t SerialUI_TASKDELAY;
 
 // Circular buffer declaration and initialization
 uint8_t rxbuf[CBUFFER_RX_DATA_SIZE];
@@ -53,8 +55,8 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		&AP_setPROCESS
 		},
 		{
-		"stop",
-		"- stop \r\n\t * Audio process wait mode.",
+		"mute",
+		"- mute \r\n\t * Mute audio.",
 		&AP_setWAIT
 		},
 		{
@@ -92,11 +94,14 @@ uint8_t SER_clc(char* args)
 void SER_open(void)
 {
 	HOST_PORT_COM_OPEN = true;
+	SerialUI_TASKDELAY = 25;
 }
 
 void SER_close(void)
 {
 	HOST_PORT_COM_OPEN = false;
+	SerialUI_TASKDELAY = 500;
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
 

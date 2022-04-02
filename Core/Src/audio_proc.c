@@ -89,9 +89,6 @@ uint8_t wait(void)
 	memset(Rbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
 
-	/* Toggle green LED */
-	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-
 	return 0;
 }
 
@@ -107,9 +104,6 @@ uint8_t process(void)
 	/* Write audio data */
 	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
 
-	/* Toggle green LED */
-	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-
 	return 0;
 }
 
@@ -121,9 +115,6 @@ uint8_t wgn(void)
 
 	/* Write audio data */
 	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
-
-	/* Toggle green LED */
-	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 
 	return 0;
 }
@@ -141,7 +132,7 @@ uint8_t AP_setPROCESS(char* args)
 uint8_t AP_setWAIT(char* args)
 {
 	AP_settings.task = AP_WAIT;
-	_printd("Wait mode set.\r\n");
+	_printd("Audio muted.\r\n");
 	return 0;
 }
 

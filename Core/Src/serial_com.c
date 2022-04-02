@@ -14,7 +14,7 @@
 static _Bool HOST_PORT_COM_OPEN = false;
 static uint32_t leftOffset = 0;
 static int8_t availableCMD = 0;
-extern uint32_t SerialUI_TASKDELAY;
+extern uint32_t SER_UI_TASKDELAY;
 
 // Circular buffer declaration and initialization
 uint8_t rxbuf[CBUFFER_RX_DATA_SIZE];
@@ -50,14 +50,14 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		&SER_help
 		},
 		{
+		"mute",
+		"- mute \r\n\t * Mute audio.",
+		&AP_setMUTE
+		},
+		{
 		"process",
 		"- process \r\n\t * Start audio processing.",
 		&AP_setPROCESS
-		},
-		{
-		"mute",
-		"- mute \r\n\t * Mute audio.",
-		&AP_setWAIT
 		},
 		{
 		"wgn",
@@ -94,13 +94,13 @@ uint8_t SER_clc(char* args)
 void SER_open(void)
 {
 	HOST_PORT_COM_OPEN = true;
-	SerialUI_TASKDELAY = 25;
+	SER_UI_TASKDELAY = 25;
 }
 
 void SER_close(void)
 {
 	HOST_PORT_COM_OPEN = false;
-	SerialUI_TASKDELAY = 500;
+	SER_UI_TASKDELAY = 500;
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 

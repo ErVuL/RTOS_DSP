@@ -23,25 +23,27 @@ typedef struct
 	int32_t stdev;
 	int32_t mean;
 	int32_t task;
+	q31_t* pCoeffsL;
+	q31_t* pCoeffsR;
 }AP_settingStruct;
 
 /* Exported functions */
-void initTask_audioProc(void);
+void AP_initTask(void);
 
 /* SubTasks */
 enum AudioProc_TASK
 {
+	AP_MUTE,
 	AP_PROCESS,
-	AP_WAIT,
 	AP_WGN
 };
-uint8_t process(void);  // Audio processing I/O
-uint8_t wait(void);     // Audio to 0
-uint8_t wgn(void);      // White Gaussian Noise generation
+uint8_t AP_mute(void);     // Audio to 0
+uint8_t AP_process(void);  // Audio processing I/O
+uint8_t AP_wgn(void);      // White Gaussian Noise generation
 
 /* Functions answering to commands from serial communication */
 uint8_t AP_setPROCESS(char* args);
-uint8_t AP_setWAIT(char* args);
+uint8_t AP_setMUTE(char* args);
 uint8_t AP_setWGN(char* args);
 
 #endif /* INC_AUDIO_PROC_H_ */

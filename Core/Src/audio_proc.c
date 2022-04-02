@@ -7,114 +7,118 @@
 #include "usbd_cdc_if.h"
 #include <signalProc_cortexM4.h>
 
+// 5 kHz Low-Pass with 64 coeffs
+q31_t pCoeffsL[FIRQ31_NTAP] = {
+		-1570804,-1317613,-918200,-301919,
+		600114,1817524,3303294,4906358,
+		6363311,7315692,7354958,6091972,
+		3242478,-1284388,-7310130,-14339176,
+		-21552576,-27851158,-31949198,-32511768,
+		-28321347,-18453264,-2436166,19626339,
+		46993191,78296112,111626976,144696444,
+		175048015,200303471,218410584,227862698,
+		227862698,218410584,200303471,175048015,
+		144696444,111626976,78296112,46993191,
+		19626339,-2436166,-18453264,-28321347,
+		-32511768,-31949198,-27851158,-21552576,
+		-14339176,-7310130,-1284388,3242478,
+		6091972,7354958,7315692,6363311,
+		4906358,3303294,1817524,600114,
+		-301919,-918200,-1317613,-1570804
+};
+
+// 5 kHz Low-Pass with 64 coeffs
+q31_t pCoeffsR[FIRQ31_NTAP] = {
+		-1570804,-1317613,-918200,-301919,
+		600114,1817524,3303294,4906358,
+		6363311,7315692,7354958,6091972,
+		3242478,-1284388,-7310130,-14339176,
+		-21552576,-27851158,-31949198,-32511768,
+		-28321347,-18453264,-2436166,19626339,
+		46993191,78296112,111626976,144696444,
+		175048015,200303471,218410584,227862698,
+		227862698,218410584,200303471,175048015,
+		144696444,111626976,78296112,46993191,
+		19626339,-2436166,-18453264,-28321347,
+		-32511768,-31949198,-27851158,-21552576,
+		-14339176,-7310130,-1284388,3242478,
+		6091972,7354958,7315692,6363311,
+		4906358,3303294,1817524,600114,
+		-301919,-918200,-1317613,-1570804
+};
+
 const uint8_t (*ExecAudioProcessing[AP_NTASK])(void) =
 {
-		&process,
-		&wait,
-		&wgn
+		&AP_mute,
+		&AP_process,
+		&AP_wgn
 };
 
 static AP_settingStruct AP_settings =
 {
 		0, 		// mean
 		10000,  // stdev
-		AP_PROCESS // task
+		AP_PROCESS, // task
+		pCoeffsL,
+		pCoeffsR
 };
 
 /* Particular FIR Coeffs */
 
-// 5 kHz Low-Pass with 64 coeffs
-q31_t pCoeffs1[FIRQ31_NTAP] = {
-		-1570804,-1317613,-918200,-301919,
-		600114,1817524,3303294,4906358,
-		6363311,7315692,7354958,6091972,
-		3242478,-1284388,-7310130,-14339176,
-		-21552576,-27851158,-31949198,-32511768,
-		-28321347,-18453264,-2436166,19626339,
-		46993191,78296112,111626976,144696444,
-		175048015,200303471,218410584,227862698,
-		227862698,218410584,200303471,175048015,
-		144696444,111626976,78296112,46993191,
-		19626339,-2436166,-18453264,-28321347,
-		-32511768,-31949198,-27851158,-21552576,
-		-14339176,-7310130,-1284388,3242478,
-		6091972,7354958,7315692,6363311,
-		4906358,3303294,1817524,600114,
-		-301919,-918200,-1317613,-1570804
-};
 
-// 5 kHz Low-Pass with 64 coeffs
-q31_t pCoeffs2[FIRQ31_NTAP] = {
-		-1570804,-1317613,-918200,-301919,
-		600114,1817524,3303294,4906358,
-		6363311,7315692,7354958,6091972,
-		3242478,-1284388,-7310130,-14339176,
-		-21552576,-27851158,-31949198,-32511768,
-		-28321347,-18453264,-2436166,19626339,
-		46993191,78296112,111626976,144696444,
-		175048015,200303471,218410584,227862698,
-		227862698,218410584,200303471,175048015,
-		144696444,111626976,78296112,46993191,
-		19626339,-2436166,-18453264,-28321347,
-		-32511768,-31949198,-27851158,-21552576,
-		-14339176,-7310130,-1284388,3242478,
-		6091972,7354958,7315692,6363311,
-		4906358,3303294,1817524,600114,
-		-301919,-918200,-1317613,-1570804
-};
 
 /* ARM q31 FIR struct and main task FIR struct */
-q31_t pState1[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
-q31_t pState2[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
+q31_t pStateL[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
+q31_t pStateR[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
 arm_fir_instance_q31 FIR1_q31;
 arm_fir_instance_q31 FIR2_q31;
 
 /* Audio buffers and struct */
-q31_t Lbuf[I2S2_AUDIOLEN];	// Left  channel
-q31_t Rbuf[I2S2_AUDIOLEN];  // Right channel
+q31_t bufL[I2S2_AUDIOLEN];	// Left  channel
+q31_t bufR[I2S2_AUDIOLEN];  // Right channel
 
 /* Function definition */
-void initTask_audioProc(void)
+void AP_initTask(void)
 {
 	/* FIR initialization */
-	arm_fir_init_q31(&FIR1_q31, FIRQ31_NTAP, pCoeffs1, pState1, I2S2_AUDIOLEN);
-	arm_fir_init_q31(&FIR2_q31, FIRQ31_NTAP, pCoeffs2, pState2, I2S2_AUDIOLEN);
+	arm_fir_init_q31(&FIR1_q31, FIRQ31_NTAP, AP_settings.pCoeffsL, pStateL, I2S2_AUDIOLEN);
+	arm_fir_init_q31(&FIR2_q31, FIRQ31_NTAP, AP_settings.pCoeffsR, pStateR, I2S2_AUDIOLEN);
 }
 
 
-uint8_t wait(void)
+uint8_t AP_mute(void)
 {
 	/* Send zero to pmodI2S2 audio output */
-	memset(Lbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
-	memset(Rbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
-	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
+	memset(bufL, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
+	memset(bufR, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
+	PMODI2S2_stereoW_q31(bufL, bufR);
 
 	return 0;
 }
 
-uint8_t process(void)
+uint8_t AP_process(void)
 {
-	/* Read audio data */
-	PMODI2S2_stereoR_q31(Lbuf, Rbuf);
+	/* Read audio input */
+	PMODI2S2_stereoR_q31(bufL, bufR);
 
 	/* Signal Processing */
-	arm_fir_q31(&FIR1_q31, Lbuf, Lbuf, I2S2_AUDIOLEN);
-	arm_fir_q31(&FIR2_q31, Rbuf, Rbuf, I2S2_AUDIOLEN);
+	arm_fir_q31(&FIR1_q31, bufL, bufL, I2S2_AUDIOLEN);
+	arm_fir_q31(&FIR2_q31, bufR, bufR, I2S2_AUDIOLEN);
 
-	/* Write audio data */
-	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
+	/* Write audio output */
+	PMODI2S2_stereoW_q31(bufL, bufR);
 
 	return 0;
 }
 
-uint8_t wgn(void)
+uint8_t AP_wgn(void)
 {
 	/* Compute random gaussian signal */
-	randGauss_q31(AP_settings.stdev, AP_settings.mean, Lbuf, I2S2_AUDIOLEN);
-	randGauss_q31(AP_settings.stdev, AP_settings.mean, Rbuf, I2S2_AUDIOLEN);
+	randGauss_q31(AP_settings.stdev, AP_settings.mean, bufL, I2S2_AUDIOLEN);
+	randGauss_q31(AP_settings.stdev, AP_settings.mean, bufR, I2S2_AUDIOLEN);
 
-	/* Write audio data */
-	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
+	/* Write audio output */
+	PMODI2S2_stereoW_q31(bufL, bufR);
 
 	return 0;
 }
@@ -125,14 +129,13 @@ uint8_t AP_setPROCESS(char* args)
 {
 	AP_settings.task = AP_PROCESS;
 	_printd("Audio processing mode set.\r\n");
-	_printd("5 kHz Low-Pass FIR with 64 coeffs\r\n");
 	return 0;
 }
 
-uint8_t AP_setWAIT(char* args)
+uint8_t AP_setMUTE(char* args)
 {
-	AP_settings.task = AP_WAIT;
-	_printd("Audio muted.\r\n");
+	AP_settings.task = AP_MUTE;
+	_printd("Audio mute mode set.\r\n");
 	return 0;
 }
 

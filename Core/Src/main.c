@@ -55,10 +55,10 @@ DMA_HandleTypeDef hdma_i2s2_ext_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
 
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
-/* Definitions for UI_task */
-osThreadId_t UI_taskHandle;
-const osThreadAttr_t UI_task_attributes = {
-  .name = "UI_task",
+/* Definitions for SER_UI_task */
+osThreadId_t SER_UI_taskHandle;
+const osThreadAttr_t SER_UI_task_attributes = {
+  .name = "SER_UI_task",
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
@@ -89,8 +89,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2S2_Init(void);
-void TASK_serialUI(void *argument);
-void TASK_audioProc(void *argument);
+void TASK_SER_UI(void *argument);
+void TASK_AP(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -161,11 +161,11 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of UI_task */
-  UI_taskHandle = osThreadNew(TASK_serialUI, NULL, &UI_task_attributes);
+  /* creation of SER_UI_task */
+  SER_UI_taskHandle = osThreadNew(TASK_SER_UI, NULL, &SER_UI_task_attributes);
 
   /* creation of AP_task */
-  AP_taskHandle = osThreadNew(TASK_audioProc, NULL, &AP_task_attributes);
+  AP_taskHandle = osThreadNew(TASK_AP, NULL, &AP_task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -340,16 +340,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_TASK_serialUI */
+/* USER CODE BEGIN Header_TASK_SER_UI */
 /**
-  * @brief  Function implementing the serialUI_task thread.
+  * @brief  Function implementing the UI_task thread.
   * @param  argument: Not used
   * @retval None
   */
 extern const SER_cmdStruct cmdStructTab[N_CMD];
-uint32_t SerialUI_TASKDELAY = 500;
-/* USER CODE END Header_TASK_serialUI */
-void TASK_serialUI(void *argument)
+uint32_t SER_UI_TASKDELAY = 500;
+/* USER CODE END Header_TASK_SER_UI */
+void TASK_SER_UI(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
@@ -364,7 +364,7 @@ void TASK_serialUI(void *argument)
   _printf("                    ####################\r\n\n");
 
   /* Infinite loop */
-  _printd("Serial UI task started.\r\n");
+  _printd("TASK_SER_UI started.\r\n");
   for(;;)
   {
 		/* Check for serial command */
@@ -374,7 +374,7 @@ void TASK_serialUI(void *argument)
 	  	}
 	  	SER_flush();
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-		osDelay(SerialUI_TASKDELAY);
+		osDelay(SER_UI_TASKDELAY);
   }
 
   // Clean Task
@@ -384,22 +384,22 @@ void TASK_serialUI(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_TASK_audioProc */
+/* USER CODE BEGIN Header_TASK_AP */
 /**
-* @brief Function implementing the audioProc_task thread.
+* @brief Function implementing the AP_task thread.
 * @param argument: Not used
 * @retval None
 */
 extern const uint8_t (*ExecAudioProcessing[AP_NTASK])(void);
-/* USER CODE END Header_TASK_audioProc */
-void TASK_audioProc(void *argument)
+/* USER CODE END Header_TASK_AP */
+void TASK_AP(void *argument)
 {
-  /* USER CODE BEGIN TASK_audioProc */
+  /* USER CODE BEGIN TASK_AP */
 	osDelay(1500);
-	initTask_audioProc();
+	AP_initTask();
 
   /* Infinite loop */
-	_printd("Audio processing task started.\r\n");
+	_printd("TASK_AP started.\r\n");
 	for(;;)
 	{
 		ExecAudioProcessing[AP_getTask()]();
@@ -409,7 +409,7 @@ void TASK_audioProc(void *argument)
 	// Clean Task
 	_printd("/!\\ Killing TASK_audioProc !\r\n");
 	osThreadTerminate(NULL);
-  /* USER CODE END TASK_audioProc */
+  /* USER CODE END TASK_AP */
 }
 
 /**

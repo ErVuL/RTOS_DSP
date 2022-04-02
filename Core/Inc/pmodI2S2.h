@@ -6,9 +6,8 @@
 #include "arm_math.h"
 
 /* Define */
-#define I2S2_BUFLEN 	4096				// I2S2 buffer length for communication with PMODI2S2 (aka uint8_t*)
+#define I2S2_BUFLEN 	16384			    // I2S2 buffer length for communication with PMODI2S2 (aka uint8_t*)
 #define I2S2_AUDIOLEN	(I2S2_BUFLEN/8) 	// I2S2 audio samples by PMODI2S2 buffer and by channel (aka int32_t*)
-#define I2S2_CBUFLEN	4096			    // I2S2 intermediate circular audio (aka int32_t*) buffer length by channel (x4)
 #define FREQ_SAMP		93750 				// Hz
 #define NBITS			24					// Audio bit depth (this value do not affect the code, audio decoding is hard coded !)
 

@@ -7,11 +7,6 @@
 #include "usbd_cdc_if.h"
 #include <signalProc_cortexM4.h>
 
-extern CB_int32_t CB_LtxI2S2;
-extern CB_int32_t CB_RtxI2S2;
-extern CB_int32_t CB_LrxI2S2;
-extern CB_int32_t CB_RrxI2S2;
-
 const uint8_t (*ExecAudioProcessing[AP_NTASK])(void) =
 {
 		&process,
@@ -23,7 +18,7 @@ static AP_settingStruct AP_settings =
 {
 		0, 		// mean
 		10000,  // stdev
-		AP_WAIT // task
+		AP_PROCESS // task
 };
 
 /* Particular FIR Coeffs */
@@ -92,11 +87,7 @@ uint8_t wait(void)
 	/* Send zero to pmodI2S2 audio output */
 	memset(Lbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 	memset(Rbuf, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
-	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
-	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
-	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
-	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
-	osDelay(1000);
+	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
 
 	/* Toggle green LED */
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
@@ -107,16 +98,14 @@ uint8_t wait(void)
 uint8_t process(void)
 {
 	/* Read audio data */
-	CB_read_i32(Lbuf, &CB_LrxI2S2, I2S2_AUDIOLEN);
-	CB_read_i32(Rbuf, &CB_RrxI2S2, I2S2_AUDIOLEN);
+	PMODI2S2_stereoR_q31(Lbuf, Rbuf);
 
 	/* Signal Processing */
-	//arm_fir_q31(&FIR1_q31, Lbuf, Lbuf, I2S2_AUDIOLEN);
-	//arm_fir_q31(&FIR2_q31, Rbuf, Rbuf, I2S2_AUDIOLEN);
+	arm_fir_q31(&FIR1_q31, Lbuf, Lbuf, I2S2_AUDIOLEN);
+	arm_fir_q31(&FIR2_q31, Rbuf, Rbuf, I2S2_AUDIOLEN);
 
 	/* Write audio data */
-	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
-	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
+	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
 
 	/* Toggle green LED */
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
@@ -131,8 +120,7 @@ uint8_t wgn(void)
 	randGauss_q31(AP_settings.stdev, AP_settings.mean, Rbuf, I2S2_AUDIOLEN);
 
 	/* Write audio data */
-	CB_write_i32(&CB_LtxI2S2, Lbuf, I2S2_AUDIOLEN);
-	CB_write_i32(&CB_RtxI2S2, Rbuf, I2S2_AUDIOLEN);
+	PMODI2S2_stereoW_q31(Lbuf, Rbuf);
 
 	/* Toggle green LED */
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);

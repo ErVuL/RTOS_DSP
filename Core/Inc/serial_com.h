@@ -5,7 +5,7 @@
 #include "usbd_cdc_if.h"
 #include "cmsis_os2.h"
 
-#define SERIAL_BLOCK_SIZE	  128
+#define SERIAL_BLOCK_SIZE	  256
 #define PRINTF_BLOCK_SIZE	  512
 #define END_CMD_CHAR 		  ' '
 #define N_CMD		 		  6

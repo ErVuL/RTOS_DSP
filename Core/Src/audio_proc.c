@@ -63,10 +63,6 @@ static AP_settingStruct AP_settings =
 		pCoeffsR
 };
 
-/* Particular FIR Coeffs */
-
-
-
 /* ARM q31 FIR struct and main task FIR struct */
 q31_t pStateL[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
 q31_t pStateR[FIRQ31_NTAP+I2S2_AUDIOLEN-1];

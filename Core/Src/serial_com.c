@@ -161,8 +161,8 @@ uint32_t SER_receive(uint8_t* buf, uint32_t *len)
 
 uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 {
-	uint8_t  UserRxBufferFS[PRINTF_BLOCK_SIZE];
-	uint8_t  cmd[PRINTF_BLOCK_SIZE];
+	uint8_t  UserRxBufferFS[PRINTF_MAX_SIZE];
+	uint8_t  cmd[PRINTF_MAX_SIZE];
 	uint8_t  fmt[4] = "%s ";
 	uint32_t cmdFound = len;
 	fmt[2] = END_CMD_CHAR;
@@ -171,10 +171,10 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 	if (availableCMD)
 	{
 		/* Read and record command */
-		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_BLOCK_SIZE);
+		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_MAX_SIZE);
 		sscanf((char*) UserRxBufferFS, (char*)fmt, (char*)cmd);
 		args[0] = '\0';
-		CB_readUntil_u8((uint8_t*)args, &rxCBuf, '\0', PRINTF_BLOCK_SIZE);
+		CB_readUntil_u8((uint8_t*)args, &rxCBuf, '\0', PRINTF_MAX_SIZE);
 
 		/* Research for the corresponding Cmd string */
 		for(uint8_t ii = 0; ii < len; ii++)
@@ -232,7 +232,7 @@ void SER_scanUnlock(void)
 void _printf(const char *format, ...)
 {
 	va_list arg;
-	uint8_t UserTxBufferFS[PRINTF_BLOCK_SIZE];
+	uint8_t UserTxBufferFS[PRINTF_MAX_SIZE];
 	if (HOST_PORT_COM_OPEN)
 	{
 		va_start(arg, format);
@@ -248,7 +248,7 @@ void _printf(const char *format, ...)
 void _printc(uint8_t FG, uint8_t BG, const char *format, ...)
 {
 	va_list arg;
-	uint8_t UserTxBufferFS[PRINTF_BLOCK_SIZE];
+	uint8_t UserTxBufferFS[PRINTF_MAX_SIZE];
 
 	if (HOST_PORT_COM_OPEN)
 	{
@@ -267,7 +267,7 @@ void _printc(uint8_t FG, uint8_t BG, const char *format, ...)
 void _printn(const char *format, ...)
 {
 	va_list arg;
-	uint8_t UserTxBufferFS[PRINTF_BLOCK_SIZE];
+	uint8_t UserTxBufferFS[PRINTF_MAX_SIZE];
 	if (HOST_PORT_COM_OPEN)
 	{
 		va_start(arg, format);
@@ -296,7 +296,7 @@ void _printd(const char *format, ...)
 {
 	va_list arg;
 	uint32_t clktime;
-	uint8_t UserTxBufferFS[PRINTF_BLOCK_SIZE];
+	uint8_t UserTxBufferFS[PRINTF_MAX_SIZE];
 
 	if (HOST_PORT_COM_OPEN)
 	{
@@ -324,7 +324,7 @@ void _scanf(const char *format, ...)
 	}
 	if(availableCMD)
 	{
-		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_BLOCK_SIZE);
+		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_MAX_SIZE);
 		va_start(arg, format);
 		vsscanf((char*) UserRxBufferFS, format, arg);
 		va_end(arg);

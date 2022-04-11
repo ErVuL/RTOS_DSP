@@ -53,6 +53,7 @@ void 	 SER_scanLock(void);
 void 	 SER_printUnlock(void);
 void 	 SER_scanUnlock(void);
 void 	 SER_flush(void);
+void 	 SER_fflush(void);
 void 	 SER_clear(void);
 
 

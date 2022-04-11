@@ -1,11 +1,11 @@
 #include <audio_proc.h>
 #include <serial_com.h>
+#include <signal_proc_cortexM4.h>
 #include <stdint.h>
 #include "stm32f407xx.h"
 #include "arm_math.h"
 #include "pmodI2S2.h"
 #include "usbd_cdc_if.h"
-#include <signalProc_cortexM4.h>
 
 // 5 kHz Low-Pass with 64 coeffs
 q31_t pCoeffsL[FIRQ31_NTAP] = {
@@ -72,6 +72,7 @@ arm_fir_instance_q31 FIR2_q31;
 /* Audio buffers and struct */
 q31_t bufL[I2S2_AUDIOLEN];	// Left  channel
 q31_t bufR[I2S2_AUDIOLEN];  // Right channel
+q31_t ACF[FIRQ31_NTAP+1];  // Autocorrelation function
 
 /* Function definition */
 void AP_initTask(void)
@@ -98,6 +99,8 @@ uint8_t AP_process(void)
 	PMODI2S2_stereoR_q31(bufL, bufR);
 
 	/* Signal Processing */
+	arm_correlate_q31(bufL, FIRQ31_NTAP/2+2, bufL, FIRQ31_NTAP/2+2, ACF);
+	//arm_levinson_durbin_q31(ACF, pCoeffsR, NULL, FIRQ31_NTAP);
 	arm_fir_q31(&FIR1_q31, bufL, bufL, I2S2_AUDIOLEN);
 	arm_fir_q31(&FIR2_q31, bufR, bufR, I2S2_AUDIOLEN);
 

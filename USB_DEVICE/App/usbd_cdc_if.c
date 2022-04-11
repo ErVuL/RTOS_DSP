@@ -100,9 +100,8 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-static _Bool HOST_PORT_COM_OPEN = false;
+extern _Bool HOST_PORT_COM_OPEN;
 uint8_t rxBuf[PRINTF_MAX_SIZE];
-uint32_t SERIAL_UI_TASK_DELAY = 250;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -241,20 +240,17 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 		{
 			SER_open();
 			HOST_PORT_COM_OPEN = true;
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 		}
 		else
 		{
 			SER_close();
 			HOST_PORT_COM_OPEN = false;
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		}
 		break;
 
 	case CDC_SEND_BREAK:
 		SER_close();
 		HOST_PORT_COM_OPEN = false;
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		break;
 
   default:
@@ -315,7 +311,8 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
   /* USER CODE BEGIN 7 */
 
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  while(hcdc->TxState != 0 && HOST_PORT_COM_OPEN){
+  while(hcdc->TxState != 0 && HOST_PORT_COM_OPEN)
+  {
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);

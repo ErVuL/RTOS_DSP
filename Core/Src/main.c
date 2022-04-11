@@ -50,7 +50,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2S_HandleTypeDef hi2s2;
+ I2S_HandleTypeDef hi2s2;
 DMA_HandleTypeDef hdma_i2s2_ext_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
 
@@ -203,6 +203,7 @@ void SystemClock_Config(void)
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -218,6 +219,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -347,7 +349,7 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 extern const SER_cmdStruct cmdStructTab[N_CMD];
-uint32_t SER_UI_TASKDELAY = 500;
+extern _Bool HOST_PORT_COM_OPEN;
 /* USER CODE END Header_TASK_SER_UI */
 void TASK_SER_UI(void *argument)
 {
@@ -367,18 +369,24 @@ void TASK_SER_UI(void *argument)
   _printd("TASK_SER_UI started.\r\n");
   for(;;)
   {
-		/* Check for serial command */
-	  	if((cmd = SER_getCmd(cmdStructTab, N_CMD, args)) != N_CMD)
+		/* Wait until port com is open */
+	  	while(!HOST_PORT_COM_OPEN)
 	  	{
-	  		cmdStructTab[cmd].ExecFunction(args);
+	  		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+	  		osDelay(500);
+	  	}
+
+	  	/* Check for command and flush */
+	  	if((cmd = SER_getCmd(cmdStructTab, N_CMD, args)) != N_CMD)
+	  	{	cmdStructTab[cmd].ExecFunction(args);
 	  	}
 	  	SER_flush();
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-		osDelay(SER_UI_TASKDELAY);
+
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
   }
 
-  // Clean Task
-  _printd("/!\\ Killing TASK_serialUI !\r\n");
+  /* Exit Task */
+  _printd("/!\\ Killing TASK_SER_UI !\r\n");
   osThreadTerminate(NULL);
 
   /* USER CODE END 5 */
@@ -406,8 +414,8 @@ void TASK_AP(void *argument)
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 	}
 
-	// Clean Task
-	_printd("/!\\ Killing TASK_audioProc !\r\n");
+	/* Exit Task */
+	_printd("/!\\ Killing TASK_AP !\r\n");
 	osThreadTerminate(NULL);
   /* USER CODE END TASK_AP */
 }
@@ -466,4 +474,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-

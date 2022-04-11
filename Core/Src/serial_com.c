@@ -11,10 +11,10 @@
 #include "cmsis_os.h"
 
 
-static _Bool HOST_PORT_COM_OPEN = false;
+_Bool HOST_PORT_COM_OPEN = false;
 static uint32_t leftOffset = 0;
 static int8_t availableCMD = 0;
-extern uint32_t SER_UI_TASKDELAY;
+extern osSemaphoreId_t SER_UI_SEMHandle;
 
 // Circular buffer declaration and initialization
 uint8_t rxbuf[CBUFFER_RX_DATA_SIZE];
@@ -94,14 +94,11 @@ uint8_t SER_clc(char* args)
 void SER_open(void)
 {
 	HOST_PORT_COM_OPEN = true;
-	SER_UI_TASKDELAY = 25;
 }
 
 void SER_close(void)
 {
 	HOST_PORT_COM_OPEN = false;
-	SER_UI_TASKDELAY = 500;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
 
@@ -167,9 +164,10 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 	uint32_t cmdFound = len;
 	fmt[2] = END_CMD_CHAR;
 
-	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
+
 	if (availableCMD)
 	{
+		osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
 		/* Read and record command */
 		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_MAX_SIZE);
 		sscanf((char*) UserRxBufferFS, (char*)fmt, (char*)cmd);
@@ -204,8 +202,8 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 			osMutexRelease(CDC_RxMutexHandle);
 			return cmdFound;
 		}
+		osMutexRelease(CDC_RxMutexHandle);
 	}
-	osMutexRelease(CDC_RxMutexHandle);
 	return cmdFound;
 }
 
@@ -286,9 +284,8 @@ void _printn(const char *format, ...)
 
 void _prints(uint8_t* stream, uint32_t len)
 {
-	if (HOST_PORT_COM_OPEN)
-	{
-		CDC_Transmit_FS(stream, len);
+	while(HOST_PORT_COM_OPEN && CDC_Transmit_FS(stream, len) != USBD_OK)
+	{	osDelay(1);
 	}
 }
 
@@ -387,13 +384,29 @@ void SER_flush(void)
 {
 	uint8_t UserTxBufferFS[SERIAL_BLOCK_SIZE];
 	uint32_t len;
-	osMutexAcquire(CDC_TxMutexHandle, osWaitForever);
-	len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE);
-	if(len)
+	if(HOST_PORT_COM_OPEN)
 	{
-		if (!(CDC_Transmit_FS(UserTxBufferFS, len) == USBD_OK))
-		{	CB_rewindWritePtr_u8(&txCBuf, len);
+		len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE);
+		if(len)
+		{
+			if (CDC_Transmit_FS(UserTxBufferFS, len) != USBD_OK)
+			{	CB_rewindWritePtr_u8(&txCBuf, len);
+			}
 		}
 	}
-	osMutexRelease(CDC_TxMutexHandle);
+}
+
+void SER_fflush(void)
+{
+	uint8_t UserTxBufferFS[SERIAL_BLOCK_SIZE];
+	uint32_t len;
+	if(HOST_PORT_COM_OPEN)
+	{
+		while((len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE)) > 0 && HOST_PORT_COM_OPEN)
+		{
+			while(CDC_Transmit_FS(UserTxBufferFS, len) != USBD_OK && HOST_PORT_COM_OPEN)
+			{	osDelay(1);
+			}
+		}
+	}
 }

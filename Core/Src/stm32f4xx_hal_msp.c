@@ -97,6 +97,7 @@ void HAL_I2S_MspInit(I2S_HandleTypeDef* hi2s)
   /* USER CODE BEGIN SPI2_MspInit 0 */
 
   /* USER CODE END SPI2_MspInit 0 */
+
   /** Initializes the peripherals clock
   */
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
@@ -230,4 +231,3 @@ void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
-

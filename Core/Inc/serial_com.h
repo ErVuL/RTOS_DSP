@@ -8,7 +8,7 @@
 #define SERIAL_BLOCK_SIZE	  APP_RX_DATA_SIZE
 #define PRINTF_MAX_SIZE	  	  1024
 #define END_CMD_CHAR 		  ' '
-#define N_CMD		 		  6
+#define N_CMD		 		  7
 
 #define GETNAME(var)  #var
 #define _PRINT32(var)  _printd("%s = %ld\r\n", GETNAME(var), var)

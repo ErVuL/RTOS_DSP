@@ -15,7 +15,7 @@
 
 /* Define */
 #define FIRQ31_NTAP 	64			// Number of FIR coefs
-#define AP_NTASK		5 			// Number of main task
+#define AP_NTASK		4 			// Number of main task
 #define TASKCMDLEN		16
 
 typedef struct
@@ -33,6 +33,7 @@ void AP_initTask(void);
 /* SubTasks */
 enum AudioProc_TASK
 {
+	AP_BYPASS,
 	AP_MUTE,
 	AP_PROCESS,
 	AP_WGN
@@ -40,10 +41,15 @@ enum AudioProc_TASK
 uint8_t AP_mute(void);     // Audio to 0
 uint8_t AP_process(void);  // Audio processing I/O
 uint8_t AP_wgn(void);      // White Gaussian Noise generation
+uint8_t AP_bypass(void);   // Bypass audio stream
+
 
 /* Functions answering to commands from serial communication */
 uint8_t AP_setPROCESS(char* args);
 uint8_t AP_setMUTE(char* args);
 uint8_t AP_setWGN(char* args);
+uint8_t AP_setBYPASS(char* args);
+
+
 
 #endif /* INC_AUDIO_PROC_H_ */

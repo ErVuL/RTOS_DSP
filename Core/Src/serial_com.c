@@ -40,6 +40,11 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		&SER_build
 		},
 		{
+		"bypass",
+		"- bypass \r\n\t * Audio bypass mode.",
+		&AP_setBYPASS
+		},
+		{
 		"clear",
 		"- clear \r\n\t * Clear the screen.",
 		&SER_clc
@@ -386,8 +391,7 @@ void SER_flush(void)
 	uint32_t len;
 	if(HOST_PORT_COM_OPEN)
 	{
-		len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE);
-		if(len)
+		if( (len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE)) > 0)
 		{
 			if (CDC_Transmit_FS(UserTxBufferFS, len) != USBD_OK)
 			{	CB_rewindWritePtr_u8(&txCBuf, len);

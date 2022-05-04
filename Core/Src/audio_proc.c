@@ -49,6 +49,7 @@ q31_t pCoeffsR[FIRQ31_NTAP] = {
 
 const uint8_t (*ExecAudioProcessing[AP_NTASK])(void) =
 {
+		&AP_bypass,
 		&AP_mute,
 		&AP_process,
 		&AP_wgn
@@ -100,13 +101,20 @@ uint8_t AP_process(void)
 
 	/* Signal Processing */
 	arm_correlate_q31(bufL, FIRQ31_NTAP/2+2, bufL, FIRQ31_NTAP/2+2, ACF);
-	//arm_levinson_durbin_q31(ACF, pCoeffsR, NULL, FIRQ31_NTAP);
+	arm_levinson_durbin_q31(ACF, pCoeffsR, NULL, FIRQ31_NTAP);
 	arm_fir_q31(&FIR1_q31, bufL, bufL, I2S2_AUDIOLEN);
 	arm_fir_q31(&FIR2_q31, bufR, bufR, I2S2_AUDIOLEN);
 
 	/* Write audio output */
 	PMODI2S2_stereoW_q31(bufL, bufR);
 
+	return 0;
+}
+
+uint8_t AP_bypass(void)
+{
+	PMODI2S2_stereoR_q31(bufL, bufR);
+	PMODI2S2_stereoW_q31(bufL, bufR);
 	return 0;
 }
 
@@ -127,14 +135,21 @@ uint8_t AP_wgn(void)
 uint8_t AP_setPROCESS(char* args)
 {
 	AP_settings.task = AP_PROCESS;
-	_printd("Audio processing mode set.\r\n");
+	_printd("Processing mode set.\r\n");
+	return 0;
+}
+
+uint8_t AP_setBYPASS(char* args)
+{
+	AP_settings.task = AP_BYPASS;
+	_printd("Bypass mode set.\r\n");
 	return 0;
 }
 
 uint8_t AP_setMUTE(char* args)
 {
 	AP_settings.task = AP_MUTE;
-	_printd("Audio mute mode set.\r\n");
+	_printd("Mute mode set.\r\n");
 	return 0;
 }
 
@@ -144,7 +159,7 @@ uint8_t AP_setWGN(char* args)
 	char*   strtmp;
 
 	AP_settings.task = AP_WGN;
-	_printd("Noise generation mode set.\r\n");
+	_printd("WGN mode set.\r\n");
 
 	/* Parse argument mean */
 	valtmp = AP_settings.mean;

@@ -12,6 +12,7 @@
 
 
 _Bool HOST_PORT_COM_OPEN = false;
+_Bool BYPASS_UI = false;
 static uint32_t leftOffset = 0;
 static int8_t availableCMD = 0;
 extern osSemaphoreId_t SER_UI_SEMHandle;
@@ -113,50 +114,57 @@ uint32_t SER_receive(uint8_t* buf, uint32_t *len)
 		uint8_t result = USBD_OK;
 		static uint8_t VT100cmdSeq;
 
-		for (uint8_t ii = 0; ii < (*len); ii++)
+		if (!BYPASS_UI)
 		{
-			/* Avoid VT100 cmd sequences (4 * uint8_t)*/
-			if(buf[ii] == '\033')
-			{	VT100cmdSeq = 4;
-			}
-
-			if(!VT100cmdSeq) // avoid VT100cmd
+			for (uint8_t ii = 0; ii < (*len); ii++)
 			{
-				/* If Backspace key: clear the last char */
-				if (buf[ii] == '\b')
-				{
-					if(leftOffset)
-					{
-						CB_rewindWritePtr_u8(&rxCBuf, 1);
-						CB_write_u8(&txCBuf, (uint8_t *) "\b \b", 3);
-						leftOffset--;
-					}
+				/* Avoid VT100 cmd sequences (4 * uint8_t)*/
+				if(buf[ii] == '\033')
+				{	VT100cmdSeq = 4;
 				}
-				/* Else if Enter key: add a \n to terminal and extract output buffer */
-				else if (buf[ii] == '\r' || buf[ii] == '\0' || buf[ii] == '\n')
-				{
 
-					//CDC_Transmit_FS((uint8_t*)"\r\n", 3);
-					CB_write_u8(&txCBuf, (uint8_t *) "\r\n", 3);
-					if(leftOffset)
+				if(!VT100cmdSeq) // avoid VT100cmd
+				{
+					/* If Backspace key: clear the last char */
+					if (buf[ii] == '\b')
 					{
-						CB_write_u8(&rxCBuf, (uint8_t *) "\0", 1);
-						leftOffset=0;
-						availableCMD++;
+						if(leftOffset)
+						{
+							CB_rewindWritePtr_u8(&rxCBuf, 1);
+							CB_write_u8(&txCBuf, (uint8_t *) "\b \b", 3);
+							leftOffset--;
+						}
+					}
+					/* Else if Enter key: add a \n to terminal and extract output buffer */
+					else if (buf[ii] == '\r' || buf[ii] == '\0' || buf[ii] == '\n')
+					{
+
+						//CDC_Transmit_FS((uint8_t*)"\r\n", 3);
+						CB_write_u8(&txCBuf, (uint8_t *) "\r\n", 3);
+						if(leftOffset)
+						{
+							CB_write_u8(&rxCBuf, (uint8_t *) "\0", 1);
+							leftOffset=0;
+							availableCMD++;
+						}
+					}
+					/* Else get the character */
+					else
+					{
+						CB_write_u8(&rxCBuf, &buf[ii], 1);
+						CB_write_u8(&txCBuf, (uint8_t *) &buf[ii], 1);
+						leftOffset++;
 					}
 				}
-				/* Else get the character */
 				else
-				{
-					CB_write_u8(&rxCBuf, &buf[ii], 1);
-					CB_write_u8(&txCBuf, (uint8_t *) &buf[ii], 1);
-					leftOffset++;
+				{	VT100cmdSeq--;
 				}
-			}
-			else
-			{	VT100cmdSeq--;
 			}
 		}
+		else
+		{	CB_write_u8(&rxCBuf, buf, *len);
+		}
+
 		return result;
 }
 
@@ -170,7 +178,7 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 	fmt[2] = END_CMD_CHAR;
 
 
-	if (availableCMD)
+	if (availableCMD && !BYPASS_UI)
 	{
 		osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
 		/* Read and record command */
@@ -225,11 +233,13 @@ void SER_printUnlock(void)
 void SER_scanLock(void)
 {
 	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
+	BYPASS_UI = true;
 }
 
 void SER_scanUnlock(void)
 {
 	osMutexRelease(CDC_RxMutexHandle);
+	BYPASS_UI = false;
 }
 
 void _printf(const char *format, ...)
@@ -335,11 +345,10 @@ void _scanf(const char *format, ...)
 	osMutexRelease(CDC_RxMutexHandle);
 }
 
-uint32_t _scans(uint8_t* stream)
+uint32_t _scans(uint8_t* stream, uint32_t len)
 {
 	availableCMD = 0;
-	return CB_read_u8(stream, &rxCBuf, APP_RX_DATA_SIZE);
-
+	return CB_read_u8(stream, &rxCBuf, len);
 }
 
 

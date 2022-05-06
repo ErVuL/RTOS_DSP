@@ -36,7 +36,7 @@ void 	 _printn(const char *format, ...);         // 0   timeout
 void 	 _printc(uint8_t FG, uint8_t BG,
 		         const char *format, ...);		   // INF timeout
 void     _scanf(const char *format, ...);		   // INF timeout
-uint32_t _scans(uint8_t* stream);                  // No  semaphore
+uint32_t _scans(uint8_t* stream, uint32_t len);                  // No  semaphore
 
 /* Serial exported functions */
 uint32_t SER_receive(uint8_t* buf, uint32_t *len);

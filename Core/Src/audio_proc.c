@@ -67,8 +67,8 @@ static AP_settingStruct AP_settings =
 /* ARM q31 FIR struct and main task FIR struct */
 q31_t pStateL[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
 q31_t pStateR[FIRQ31_NTAP+I2S2_AUDIOLEN-1];
-arm_fir_instance_q31 FIR1_q31;
-arm_fir_instance_q31 FIR2_q31;
+arm_fir_instance_q31 FIR_Lq31;
+arm_fir_instance_q31 FIR_Rq31;
 
 /* Audio buffers and struct */
 q31_t bufL[I2S2_AUDIOLEN];	// Left  channel
@@ -79,8 +79,8 @@ q31_t ACF[FIRQ31_NTAP+1];  // Autocorrelation function
 void AP_initTask(void)
 {
 	/* FIR initialization */
-	arm_fir_init_q31(&FIR1_q31, FIRQ31_NTAP, AP_settings.pCoeffsL, pStateL, I2S2_AUDIOLEN);
-	arm_fir_init_q31(&FIR2_q31, FIRQ31_NTAP, AP_settings.pCoeffsR, pStateR, I2S2_AUDIOLEN);
+	arm_fir_init_q31(&FIR_Lq31, FIRQ31_NTAP, AP_settings.pCoeffsL, pStateL, I2S2_AUDIOLEN);
+	arm_fir_init_q31(&FIR_Rq31, FIRQ31_NTAP, AP_settings.pCoeffsR, pStateR, I2S2_AUDIOLEN);
 }
 
 
@@ -101,9 +101,9 @@ uint8_t AP_process(void)
 
 	/* Signal Processing */
 	arm_correlate_q31(bufL, FIRQ31_NTAP/2+2, bufL, FIRQ31_NTAP/2+2, ACF);
-	arm_levinson_durbin_q31(ACF, pCoeffsR, NULL, FIRQ31_NTAP);
-	arm_fir_q31(&FIR1_q31, bufL, bufL, I2S2_AUDIOLEN);
-	arm_fir_q31(&FIR2_q31, bufR, bufR, I2S2_AUDIOLEN);
+	arm_levinson_durbin_q31(ACF, AP_settings.pCoeffsR, NULL, FIRQ31_NTAP);
+	arm_fir_q31(&FIR_Rq31, bufL, bufL, I2S2_AUDIOLEN);
+	arm_fir_q31(&FIR_Rq31, bufR, bufR, I2S2_AUDIOLEN);
 
 	/* Write audio output */
 	PMODI2S2_stereoW_q31(bufL, bufR);

@@ -60,14 +60,14 @@ osThreadId_t SER_UI_taskHandle;
 const osThreadAttr_t SER_UI_task_attributes = {
   .name = "SER_UI_task",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for AP_task */
 osThreadId_t AP_taskHandle;
 const osThreadAttr_t AP_task_attributes = {
   .name = "AP_task",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for CDC_TxMutex */
 osMutexId_t CDC_TxMutexHandle;

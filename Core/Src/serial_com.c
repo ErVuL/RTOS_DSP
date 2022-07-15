@@ -10,9 +10,12 @@
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
 
+#define _DEBUG
 
 _Bool HOST_PORT_COM_OPEN = false;
 _Bool BYPASS_UI = false;
+_Bool BINARY = false;
+_Bool LOCK_INPUT = false;
 static uint32_t leftOffset = 0;
 static int8_t availableCMD = 0;
 extern osSemaphoreId_t SER_UI_SEMHandle;
@@ -56,6 +59,11 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		&SER_help
 		},
 		{
+		"emfsk",
+		"- emfsk -m=%u -fc=%u -df=%u \r\n\t * Multi Frequency Shift Keying emitter.",
+		&AP_setEMFSK
+		},
+		{
 		"mute",
 		"- mute \r\n\t * Mute audio.",
 		&AP_setMUTE
@@ -67,7 +75,7 @@ const SER_cmdStruct cmdStructTab[N_CMD] = {
 		},
 		{
 		"wgn",
-		"- wgn --mean=%d --stdev=%d \r\n\t * Generate white gaussian noise with specified "
+		"- wgn -mean=%d -stdev=%d \r\n\t * Generate white gaussian noise with specified "
 		                           "\r\n\t   mean and standard deviation.",
 		&AP_setWGN
 		}
@@ -114,55 +122,56 @@ uint32_t SER_receive(uint8_t* buf, uint32_t *len)
 		uint8_t result = USBD_OK;
 		static uint8_t VT100cmdSeq;
 
-		if (!BYPASS_UI)
+		if(!LOCK_INPUT)
 		{
-			for (uint8_t ii = 0; ii < (*len); ii++)
+			if (!BINARY)
 			{
-				/* Avoid VT100 cmd sequences (4 * uint8_t)*/
-				if(buf[ii] == '\033')
-				{	VT100cmdSeq = 4;
-				}
-
-				if(!VT100cmdSeq) // avoid VT100cmd
+				for (uint8_t ii = 0; ii < (*len); ii++)
 				{
-					/* If Backspace key: clear the last char */
-					if (buf[ii] == '\b')
-					{
-						if(leftOffset)
-						{
-							CB_rewindWritePtr_u8(&rxCBuf, 1);
-							CB_write_u8(&txCBuf, (uint8_t *) "\b \b", 3);
-							leftOffset--;
-						}
+					/* Avoid VT100 cmd sequences (4 * uint8_t)*/
+					if(buf[ii] == '\033')
+					{	VT100cmdSeq = 4;
 					}
-					/* Else if Enter key: add a \n to terminal and extract output buffer */
-					else if (buf[ii] == '\r' || buf[ii] == '\0' || buf[ii] == '\n')
-					{
 
-						//CDC_Transmit_FS((uint8_t*)"\r\n", 3);
-						CB_write_u8(&txCBuf, (uint8_t *) "\r\n", 3);
-						if(leftOffset)
+					if(!VT100cmdSeq) // avoid VT100cmd
+					{
+						/* If Backspace key: clear the last char */
+						if (buf[ii] == '\b')
 						{
-							CB_write_u8(&rxCBuf, (uint8_t *) "\0", 1);
-							leftOffset=0;
-							availableCMD++;
+							if(leftOffset)
+							{
+								CB_rewindWritePtr_u8(&rxCBuf, 1);
+								CB_write_u8(&txCBuf, (uint8_t *) "\b \b", 3);
+								leftOffset--;
+							}
+						}
+						/* Else if Enter key: add a \n to terminal and extract output buffer */
+						else if (buf[ii] == '\r' || buf[ii] == '\0' || buf[ii] == '\n')
+						{
+							CB_write_u8(&txCBuf, (uint8_t *) "\r\n", 2);
+							if(leftOffset)
+							{
+								CB_write_u8(&rxCBuf, (uint8_t *) "\0", 1);
+								leftOffset=0;
+								availableCMD++;
+							}
+						}
+						/* Else get the character */
+						else
+						{
+							CB_write_u8(&rxCBuf, &buf[ii], 1);
+							CB_write_u8(&txCBuf, (uint8_t *) &buf[ii], 1);
+							leftOffset++;
 						}
 					}
-					/* Else get the character */
 					else
-					{
-						CB_write_u8(&rxCBuf, &buf[ii], 1);
-						CB_write_u8(&txCBuf, (uint8_t *) &buf[ii], 1);
-						leftOffset++;
+					{	VT100cmdSeq--;
 					}
-				}
-				else
-				{	VT100cmdSeq--;
 				}
 			}
-		}
-		else
-		{	CB_write_u8(&rxCBuf, buf, *len);
+			else
+			{	CB_write_u8(&rxCBuf, buf, *len);
+			}
 		}
 
 		return result;
@@ -180,7 +189,10 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 
 	if (availableCMD && !BYPASS_UI)
 	{
-		osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
+		if(osMutexAcquire(CDC_RxMutexHandle, 0) != osOK)
+		{	return cmdFound;
+		}
+
 		/* Read and record command */
 		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_MAX_SIZE);
 		sscanf((char*) UserRxBufferFS, (char*)fmt, (char*)cmd);
@@ -210,13 +222,14 @@ uint32_t SER_getCmd(const SER_cmdStruct* cmdStructTab, uint32_t len, char* args)
 
 		if(cmdFound == len)
 		{
-			_printd("/!\\ Command \"%s\" not found !\r\n", cmd);
+			_printf("/!\\ Command \"%s\" not found !\r\n", cmd);
 			availableCMD--;
 			osMutexRelease(CDC_RxMutexHandle);
 			return cmdFound;
 		}
 		osMutexRelease(CDC_RxMutexHandle);
 	}
+
 	return cmdFound;
 }
 
@@ -233,13 +246,34 @@ void SER_printUnlock(void)
 void SER_scanLock(void)
 {
 	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
+}
+
+void SER_InputLock(void)
+{
+	LOCK_INPUT = true;
+	_printd("Keyboard input locked.\r\n");
+}
+
+void SER_InputUnlock(void)
+{
+	LOCK_INPUT = false;
+	_printd("Keyboard input unlocked.\r\n");
+}
+void SER_UIlock(void)
+{
+	_printd("UI locked.\r\n");
 	BYPASS_UI = true;
+}
+
+void SER_UIunlock(void)
+{
+	BYPASS_UI = false;
+	_printd("UI unlocked.\r\n");
 }
 
 void SER_scanUnlock(void)
 {
 	osMutexRelease(CDC_RxMutexHandle);
-	BYPASS_UI = false;
 }
 
 void _printf(const char *format, ...)
@@ -306,6 +340,7 @@ void _prints(uint8_t* stream, uint32_t len)
 
 void _printd(const char *format, ...)
 {
+#ifdef _DEBUG
 	va_list arg;
 	uint32_t clktime;
 	uint8_t UserTxBufferFS[PRINTF_MAX_SIZE];
@@ -323,12 +358,14 @@ void _printd(const char *format, ...)
 		osMutexRelease(CDC_TxMutexHandle);
 
 	}
+#endif
 }
 
-void _scanf(const char *format, ...)
+uint32_t _scanf(const char *format, ...)
 {
 	uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 	va_list arg;
+	uint32_t len = 0;
 
 	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
 	while (!availableCMD && HOST_PORT_COM_OPEN)
@@ -336,13 +373,31 @@ void _scanf(const char *format, ...)
 	}
 	if(availableCMD)
 	{
-		CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_MAX_SIZE);
+		len += CB_readUntil_u8(UserRxBufferFS, &rxCBuf, END_CMD_CHAR, PRINTF_MAX_SIZE);
 		va_start(arg, format);
 		vsscanf((char*) UserRxBufferFS, format, arg);
 		va_end(arg);
 		availableCMD--;
 	}
 	osMutexRelease(CDC_RxMutexHandle);
+	return len;
+}
+
+uint32_t _scansf(char* msg, uint32_t maxLen)
+{
+	uint32_t len = 0;
+
+	osMutexAcquire(CDC_RxMutexHandle, osWaitForever);
+	while (!availableCMD && HOST_PORT_COM_OPEN)
+	{
+	}
+	if(availableCMD)
+	{
+		len += CB_readUntil_u8((uint8_t*) msg, &rxCBuf, '\0', maxLen);
+		availableCMD--;
+	}
+	osMutexRelease(CDC_RxMutexHandle);
+	return len;
 }
 
 uint32_t _scans(uint8_t* stream, uint32_t len)
@@ -398,12 +453,13 @@ void SER_flush(void)
 {
 	uint8_t UserTxBufferFS[SERIAL_BLOCK_SIZE];
 	uint32_t len;
+
 	if(HOST_PORT_COM_OPEN)
 	{
-		if( (len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE)) > 0)
+		if((len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE-2)) > 0)
 		{
 			if (CDC_Transmit_FS(UserTxBufferFS, len) != USBD_OK)
-			{	CB_rewindWritePtr_u8(&txCBuf, len);
+			{	CB_rewindReadPtr_u8(&txCBuf, len);
 			}
 		}
 	}
@@ -413,12 +469,16 @@ void SER_fflush(void)
 {
 	uint8_t UserTxBufferFS[SERIAL_BLOCK_SIZE];
 	uint32_t len;
+
 	if(HOST_PORT_COM_OPEN)
 	{
-		while((len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE)) > 0 && HOST_PORT_COM_OPEN)
+		if( (len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE)) > 0)
 		{
-			while(CDC_Transmit_FS(UserTxBufferFS, len) != USBD_OK && HOST_PORT_COM_OPEN)
-			{	osDelay(1);
+			while((len = CB_read_u8(UserTxBufferFS, &txCBuf, SERIAL_BLOCK_SIZE)) > 0 && HOST_PORT_COM_OPEN)
+			{
+				while(CDC_Transmit_FS(UserTxBufferFS, len) != USBD_OK && HOST_PORT_COM_OPEN)
+				{	osDelay(1);
+				}
 			}
 		}
 	}

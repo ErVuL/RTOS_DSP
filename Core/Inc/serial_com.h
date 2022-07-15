@@ -8,7 +8,7 @@
 #define SERIAL_BLOCK_SIZE	  APP_RX_DATA_SIZE
 #define PRINTF_MAX_SIZE	  	  1024
 #define END_CMD_CHAR 		  ' '
-#define N_CMD		 		  7
+#define N_CMD		 		  8
 
 #define GETNAME(var)  #var
 #define _PRINT32(var)  _printd("%s = %ld\r\n", GETNAME(var), var)
@@ -35,8 +35,9 @@ void     _printd(const char *format, ...);         // INF timeout
 void 	 _printn(const char *format, ...);         // 0   timeout
 void 	 _printc(uint8_t FG, uint8_t BG,
 		         const char *format, ...);		   // INF timeout
-void     _scanf(const char *format, ...);		   // INF timeout
-uint32_t _scans(uint8_t* stream, uint32_t len);                  // No  semaphore
+uint32_t _scanf(const char *format, ...);		   // INF timeout
+uint32_t _scansf(char* msg, uint32_t maxLen);      // INF timeout
+uint32_t _scans(uint8_t* stream, uint32_t len);    // No  semaphore
 
 /* Serial exported functions */
 uint32_t SER_receive(uint8_t* buf, uint32_t *len);
@@ -50,6 +51,10 @@ void 	 SER_open(void);
 void 	 SER_close(void);
 void 	 SER_printLock(void);
 void 	 SER_scanLock(void);
+void     SER_UIlock(void);
+void     SER_UIunlock(void);
+void     SER_InputLock(void);
+void     SER_InputUnlock(void);
 void 	 SER_printUnlock(void);
 void 	 SER_scanUnlock(void);
 void 	 SER_flush(void);

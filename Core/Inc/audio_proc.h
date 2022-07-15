@@ -15,8 +15,9 @@
 
 /* Define */
 #define FIRQ31_NTAP 	64			// Number of FIR coefs
-#define AP_NTASK		4 			// Number of main task
-#define TASKCMDLEN		16
+#define AP_NTASK		5 			// Number of main task
+#define TASKCMDLEN		17
+#define MSG_LEN         128         // Communication protocols message length
 
 typedef struct
 {
@@ -27,6 +28,14 @@ typedef struct
 	q31_t* pCoeffsR;
 }AP_settingStruct;
 
+typedef struct
+{
+	uint32_t cF;   // Center frequency
+	uint32_t dF;   // Frequency deviation
+	uint32_t bF;   // Bit rate in Hz
+	uint32_t M;    // Number of symbols
+}EMFSK_settingStruct;
+
 /* Exported functions */
 void AP_initTask(void);
 
@@ -34,6 +43,7 @@ void AP_initTask(void);
 enum AudioProc_TASK
 {
 	AP_BYPASS,
+	AP_EMFSK,
 	AP_MUTE,
 	AP_PROCESS,
 	AP_WGN
@@ -42,10 +52,12 @@ uint8_t AP_mute(void);     // Audio to 0
 uint8_t AP_process(void);  // Audio processing I/O
 uint8_t AP_wgn(void);      // White Gaussian Noise generation
 uint8_t AP_bypass(void);   // Bypass audio stream
+uint8_t AP_emfsk(void);    // Send user keyboard input by MFSK
 
 
 /* Functions answering to commands from serial communication */
 uint8_t AP_setPROCESS(char* args);
+uint8_t AP_setEMFSK(char* args);
 uint8_t AP_setMUTE(char* args);
 uint8_t AP_setWGN(char* args);
 uint8_t AP_setBYPASS(char* args);

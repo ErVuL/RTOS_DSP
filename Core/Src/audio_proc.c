@@ -186,6 +186,7 @@ uint8_t AP_emfsk(void)
 			if((!strcmp(msg, "exit")) || (!strcmp(msg, "quit")))
 			{
 				_printd("Exiting MFSK Emitter.\r\n");
+				memset(bufL, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 				break;
 			}
 			SER_InputLock();
@@ -229,6 +230,7 @@ uint8_t AP_emfsk(void)
 						/* Create modulated signal */
 						bufL[jj++] = Q23MAX/2.0*sin(2.0*PI*(EMFSK_s.cF+d*EMFSK_s.dF)*kk/FREQ_SAMP+phi);
 						jj %= I2S2_AUDIOLEN;
+
 						if(kk == FREQ_SAMP/EMFSK_s.bF/nBits_symbol-1)
 						{	 phi = (2.0*PI*(EMFSK_s.cF+d*EMFSK_s.dF)*(kk+1)/FREQ_SAMP+phi);
 						}
@@ -249,10 +251,8 @@ uint8_t AP_emfsk(void)
 					PMODI2S2_stereoW_q31(bufL, bufR);
 					memset(bufL, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 				}
-
 			}
 			_printf("Done.\r\n");
-			memset(bufL, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
 			PMODI2S2_stereoW_q31(bufL, bufR);
 			PMODI2S2_stereoW_q31(bufL, bufR);
 			SER_InputUnlock();

@@ -69,10 +69,10 @@ static AP_settingStruct AP_settings =
 
 static EMFSK_settingStruct EMFSK_s =
 {
-		5000,
-		500,
-		100,
-		4
+		5000,  // cF: Center frequency
+		500,   // dF: Frequency deviation
+		50,    // bF: Bit rate in Hz
+		4      // M : Number of symbols
 };
 
 /* ARM q31 FIR struct and main task FIR struct */
@@ -141,12 +141,16 @@ uint8_t AP_wgn(void)
 	return 0;
 }
 
+/*
+ * TODO :
+ * 			- ACK/NAK system ?!
+ */
 uint8_t AP_emfsk(void)
 {
 	char msg[MSG_LEN];
 	uint32_t shift_sym, shift_msg, ii, jj, msgLen;
 	float32_t phi = 0;
-	int32_t d = 0;
+	int32_t iF = 0; // ith frequency
 	int8_t sym          = 0;
 	uint8_t nBits_symbol = log2(EMFSK_s.M);
 	memset(bufL, 0, sizeof(q31_t)*I2S2_AUDIOLEN);
@@ -160,7 +164,7 @@ uint8_t AP_emfsk(void)
 	_printf("Bit rate         = %d b/s     \r\n", EMFSK_s.bF);
 	_printf("Center freq      = %d Hz      \r\n", EMFSK_s.cF);
 	_printf("Deviation freq   = %d Hz      \r\n", EMFSK_s.dF);
-	_printf("BandWidth        = %d Hz      \r\n", EMFSK_s.M*(EMFSK_s.dF+EMFSK_s.bF));
+	_printf("BandWidth        = %d Hz      \r\n", 2*EMFSK_s.M*EMFSK_s.dF);
 	_printf("Modulation index = %d         \r\n", EMFSK_s.dF/EMFSK_s.bF);
 
 	if(EMFSK_s.cF < EMFSK_s.M*(EMFSK_s.dF+EMFSK_s.bF)/2)
@@ -173,13 +177,17 @@ uint8_t AP_emfsk(void)
 	{	_printd("/!\\ Modulation index < 1 !\r\n");
 	}
 
+	if(round(log2(EMFSK_s.M)) != log2(EMFSK_s.M) || EMFSK_s.M > 256)
+	{
+		_printf("/!\\ M should be 2^n with n in [1;8] !\r\n => Setting M to 4.\r\n");
+		EMFSK_s.M = 4;
+	}
 	for(;;)
 	{
 		/* Read message from user and exit if asked */
 		_printf("\r\n@ ");
 		msgLen = _scansf(msg, MSG_LEN);
 		_printf("\r\n");
-
 
 		if(msgLen)
 		{
@@ -217,22 +225,17 @@ uint8_t AP_emfsk(void)
 				if (shift_sym == 0)
 				{
 					/* Frequency shift factor */
-					if(sym < EMFSK_s.M/2)
-					{	d = sym -EMFSK_s.M/2;
-					}
-					else
-					{	d = sym - EMFSK_s.M/2 + 1;
-					}
+					iF = EMFSK_s.cF + (2*(sym+1) - 1 - EMFSK_s.M)*EMFSK_s.dF;
 
 					/* For the length of a symbol */
 					for(uint32_t kk = 0; kk < FREQ_SAMP/EMFSK_s.bF/nBits_symbol; kk++)
 					{
 						/* Create modulated signal */
-						bufL[jj++] = Q23MAX/2.0*sin(2.0*PI*(EMFSK_s.cF+d*EMFSK_s.dF)*kk/FREQ_SAMP+phi);
+						bufL[jj++] = Q23MAX/2.0*sin(2.0*PI*iF*kk/FREQ_SAMP+phi);
 						jj %= I2S2_AUDIOLEN;
 
 						if(kk == FREQ_SAMP/EMFSK_s.bF/nBits_symbol-1)
-						{	 phi = (2.0*PI*(EMFSK_s.cF+d*EMFSK_s.dF)*(kk+1)/FREQ_SAMP+phi);
+						{	 phi = (2.0*PI*iF*(kk+1)/FREQ_SAMP+phi);
 						}
 
 						/* If buffer is full write audio output */
@@ -259,7 +262,6 @@ uint8_t AP_emfsk(void)
 		}
 
 	}
-
 	SER_UIunlock();
 	AP_setMUTE(NULL);
 	_printf("Done.\r\n");

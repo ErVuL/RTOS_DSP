@@ -361,9 +361,9 @@ void TASK_SER_UI(void *argument)
 
   osDelay(1000);
   SER_clear();
-  _printf("\r\n                    ####################\r\n");
-  _printf("                    ## RTOS DSP v%d.%02d ##\r\n", MAJ_VERSION, MIN_VERSION);
-  _printf("                    ####################\r\n\n");
+  _printf("\r\n               ####################\r\n");
+  _printf("               ## RTOS DSP v%d.%02d ##\r\n", MAJ_VERSION, MIN_VERSION);
+  _printf("               ####################\r\n\n");
 
   /* Infinite loop */
   _printd("TASK_SER_UI started.\r\n");
@@ -382,7 +382,7 @@ void TASK_SER_UI(void *argument)
 	  	}
 	  	SER_flush();
 
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+	  	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
   }
 
   /* Exit Task */
